@@ -96,8 +96,16 @@ export function AuthShell({
     } else setMessage(data.message);
   };
 
+  // Full E.164 phone with India country code (+91)
+  const fullPhone = `+91${otpPhone}`;
+  const phoneValid = /^[6-9]\d{9}$/.test(otpPhone);
+
   // OTP Send
   const sendOtp = async () => {
+    if (!phoneValid) {
+      setError("Enter a valid 10-digit Indian mobile number.");
+      return;
+    }
     setLoading(true);
     setError("");
     setMessage("");
@@ -105,7 +113,7 @@ export function AuthShell({
     const response = await fetch("/api/auth/otp/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: otpPhone }),
+      body: JSON.stringify({ phone: fullPhone }),
     });
     const data = await response.json();
     setLoading(false);
@@ -115,12 +123,16 @@ export function AuthShell({
       return;
     }
     setOtpSent(true);
-    setMessage("OTP sent! Check your phone.");
+    setMessage(`OTP sent to ${fullPhone}. Check your phone.`);
   };
 
   // OTP Verify
   const verifyOtp = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!otpSent) {
+      await sendOtp();
+      return;
+    }
     setLoading(true);
     setError("");
     setMessage("");
@@ -128,7 +140,7 @@ export function AuthShell({
     const response = await fetch("/api/auth/otp/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: otpPhone, otp: otpCode }),
+      body: JSON.stringify({ phone: fullPhone, otp: otpCode }),
     });
     const data = await response.json();
     setLoading(false);
@@ -219,36 +231,44 @@ export function AuthShell({
           )}
 
           {/* ══════════════════════════════════════
-              OTP FLOW
+              OTP FLOW (India +91 predefined)
           ══════════════════════════════════════ */}
           {mode === "otp" && (
             <form onSubmit={verifyOtp} className="grid gap-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-muted-ink">
-                  Phone number (international format)
+                  Mobile number
                 </label>
-                <div className="flex gap-2">
-                  <Input
+                <div className="flex items-stretch overflow-hidden rounded-soft border border-sand-line bg-parchment transition focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/20">
+                  {/* Fixed +91 prefix */}
+                  <span className="flex items-center gap-1.5 border-r border-sand-line bg-sand-line/20 px-3 text-sm font-medium text-ink">
+                    <span className="text-base">🇮🇳</span>
+                    +91
+                  </span>
+                  <input
                     required
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
                     value={otpPhone}
-                    onChange={(e) => setOtpPhone(e.target.value)}
-                    placeholder="+919876543210"
+                    onChange={(e) =>
+                      setOtpPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                    }
+                    placeholder="98765 43210"
                     disabled={otpSent}
-                    className="flex-1"
+                    className="h-12 flex-1 bg-transparent px-3 text-sm text-ink outline-none placeholder:text-muted-ink/60 disabled:opacity-60"
                   />
-                  {!otpSent && (
-                    <Button
-                      type="button"
-                      onClick={sendOtp}
-                      disabled={loading || !otpPhone}
-                      variant="secondary"
-                      className="shrink-0 whitespace-nowrap"
-                    >
-                      {loading ? "Sending..." : "Send OTP"}
-                    </Button>
-                  )}
                 </div>
+                {!otpSent && (
+                  <Button
+                    type="button"
+                    onClick={sendOtp}
+                    disabled={loading || !phoneValid}
+                    className="mt-3 w-full"
+                  >
+                    {loading ? "Sending OTP..." : "Send OTP"}
+                  </Button>
+                )}
               </div>
 
               {otpSent && (
@@ -257,29 +277,50 @@ export function AuthShell({
                     <label className="mb-1.5 block text-xs font-medium text-muted-ink">
                       Enter 6-digit OTP
                     </label>
-                    <Input
+                    <input
                       required
                       type="text"
                       inputMode="numeric"
                       maxLength={6}
                       value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                      placeholder="123456"
+                      onChange={(e) =>
+                        setOtpCode(e.target.value.replace(/\D/g, ""))
+                      }
+                      placeholder="------"
                       autoFocus
+                      className="h-14 w-full rounded-soft border border-sand-line bg-parchment text-center text-2xl font-semibold tracking-[0.5em] text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/20"
                     />
                   </div>
 
-                  <Button type="submit" disabled={loading || otpCode.length !== 6}>
+                  <Button
+                    type="submit"
+                    disabled={loading || otpCode.length !== 6}
+                  >
                     {loading ? "Verifying..." : "Verify & Sign in"}
                   </Button>
 
-                  <button
-                    type="button"
-                    onClick={() => { setOtpSent(false); setOtpCode(""); setError(""); setMessage(""); }}
-                    className="text-center text-xs text-muted-ink hover:text-oxblood"
-                  >
-                    Change phone number
-                  </button>
+                  <div className="flex items-center justify-between text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOtpSent(false);
+                        setOtpCode("");
+                        setError("");
+                        setMessage("");
+                      }}
+                      className="text-muted-ink hover:text-oxblood"
+                    >
+                      &larr; Change number
+                    </button>
+                    <button
+                      type="button"
+                      onClick={sendOtp}
+                      disabled={loading}
+                      className="text-oxblood hover:text-gold disabled:opacity-50"
+                    >
+                      Resend OTP
+                    </button>
+                  </div>
                 </>
               )}
 
