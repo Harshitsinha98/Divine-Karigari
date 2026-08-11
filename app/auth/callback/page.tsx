@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -16,7 +16,7 @@ import { createClient } from "@supabase/supabase-js";
  * 4. Server verifies token, finds/creates user, sets cookie
  * 5. We redirect to the destination
  */
-function AuthCallbackContent() {
+export default function AuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/account";
@@ -103,22 +103,5 @@ function AuthCallbackContent() {
         <p className="mt-4 text-sm text-muted-ink">{status}</p>
       </div>
     </main>
-  );
-}
-
-export default function AuthCallbackPage() {
-  return (
-    <Suspense
-      fallback={
-        <main className="flex min-h-[500px] items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
-            <p className="mt-4 text-sm text-muted-ink">Loading...</p>
-          </div>
-        </main>
-      }
-    >
-      <AuthCallbackContent />
-    </Suspense>
   );
 }
