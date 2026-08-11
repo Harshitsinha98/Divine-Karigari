@@ -9,7 +9,13 @@ export const metadata: Metadata = {
 export default function SignupPage({
   searchParams,
 }: {
-  searchParams: { next?: string };
+  searchParams: { next?: string; error?: string };
 }) {
-  return <AuthShell mode="signup" nextPath={searchParams.next} />;
+  return (
+    <AuthShell
+      mode="signup"
+      nextPath={searchParams.next}
+      error={searchParams.error}
+    />
+  );
 }

@@ -8,7 +8,13 @@ export const metadata: Metadata = {
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { next?: string };
+  searchParams: { next?: string; error?: string };
 }) {
-  return <AuthShell mode="login" nextPath={searchParams.next} />;
+  return (
+    <AuthShell
+      mode="login"
+      nextPath={searchParams.next}
+      error={searchParams.error}
+    />
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -12,14 +12,14 @@ export function AuthShell({
   mode: initialMode,
   nextPath,
   token,
+  error: oauthError,
 }: {
   mode: "login" | "signup" | "forgot" | "reset";
   nextPath?: string;
   token?: string;
+  error?: string;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const oauthError = searchParams.get("error");
 
   const [mode, setMode] = useState<AuthMode>(initialMode as AuthMode);
   const [form, setForm] = useState({
