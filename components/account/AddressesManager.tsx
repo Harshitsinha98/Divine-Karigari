@@ -4,6 +4,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { AccountCard } from "@/components/account/AccountSection";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { StateCitySelect } from "@/components/shop/StateCitySelect";
 type Address = {
   id: string;
   label: string;
@@ -120,32 +121,42 @@ export function AddressesManager() {
           {editing ? "Edit address" : "Add an address"}
         </h2>
         <form onSubmit={save} className="mt-5 grid gap-3">
-          {[
-            "label",
-            "recipientName",
-            "phone",
-            "line1",
-            "line2",
-            "city",
-            "state",
-            "postalCode",
-          ].map((field) => (
-            <Input
-              key={field}
-              required={field !== "line2"}
-              placeholder={
-                field === "recipientName"
-                  ? "Recipient name"
-                  : field === "postalCode"
-                    ? "Postal code"
+          {["label", "recipientName", "phone", "line1", "line2"].map(
+            (field) => (
+              <Input
+                key={field}
+                required={field !== "line2"}
+                placeholder={
+                  field === "recipientName"
+                    ? "Recipient name"
                     : field[0].toUpperCase() + field.slice(1)
-              }
-              value={form[field as keyof typeof form] as string}
-              onChange={(event) =>
-                setForm({ ...form, [field]: event.target.value })
-              }
-            />
-          ))}
+                }
+                value={form[field as keyof typeof form] as string}
+                onChange={(event) =>
+                  setForm({ ...form, [field]: event.target.value })
+                }
+              />
+            ),
+          )}
+          <StateCitySelect
+            state={form.state}
+            city={form.city}
+            onStateChange={(state) => setForm({ ...form, state })}
+            onCityChange={(city) => setForm({ ...form, city })}
+          />
+          <Input
+            required
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="Postal code (6-digit pincode)"
+            value={form.postalCode}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                postalCode: event.target.value.replace(/\D/g, "").slice(0, 6),
+              })
+            }
+          />
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"

@@ -17,6 +17,7 @@ import { AccountCard } from "@/components/account/AccountSection";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { StateCitySelect } from "@/components/shop/StateCitySelect";
 import { trackBeginCheckout } from "@/lib/client-analytics";
 
 type Address = {
@@ -59,6 +60,7 @@ export default function CheckoutPage() {
     available: boolean;
     estimatedDays: number | null;
     courierName: string | null;
+    rate: number | null;
     estimatedDeliveryDate: string | null;
   } | null>(null);
   const [checkingServiceability, setCheckingServiceability] = useState(false);
@@ -331,33 +333,28 @@ export default function CheckoutPage() {
                           })
                         }
                       />
-                      <Input
-                        required
-                        placeholder="City"
-                        value={newAddress.city}
-                        onChange={(e) =>
-                          setNewAddress({ ...newAddress, city: e.target.value })
+                      <StateCitySelect
+                        state={newAddress.state}
+                        city={newAddress.city}
+                        onStateChange={(state) =>
+                          setNewAddress({ ...newAddress, state })
+                        }
+                        onCityChange={(city) =>
+                          setNewAddress({ ...newAddress, city })
                         }
                       />
                       <Input
                         required
-                        placeholder="State"
-                        value={newAddress.state}
-                        onChange={(e) =>
-                          setNewAddress({
-                            ...newAddress,
-                            state: e.target.value,
-                          })
-                        }
-                      />
-                      <Input
-                        required
-                        placeholder="Postal code"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="Postal code (6-digit pincode)"
                         value={newAddress.postalCode}
                         onChange={(e) =>
                           setNewAddress({
                             ...newAddress,
-                            postalCode: e.target.value,
+                            postalCode: e.target.value
+                              .replace(/\D/g, "")
+                              .slice(0, 6),
                           })
                         }
                       />

@@ -6,6 +6,7 @@ import { Accordion } from "@/components/ui/Accordion";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { DeliveryEstimate } from "@/components/shop/DeliveryEstimate";
 import { useCommerce } from "@/components/commerce/CommerceProvider";
 
 type Variant = {
@@ -209,6 +210,8 @@ export function ProductPurchase({ product }: { product: ProductDetailData }) {
           <Heart size={19} fill={wishlisted ? "currentColor" : "none"} />
         </button>
       </div>
+      {/* Pincode-based delivery estimate */}
+      <DeliveryEstimate productId={product.id} quantity={quantity} />
       <div className="mt-10">
         <Accordion
           items={[

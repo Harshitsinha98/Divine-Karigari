@@ -123,14 +123,23 @@ export async function checkShiprocketServiceability(
       courierName: null,
       estimatedDeliveryDate: null,
     };
-  const courier = couriers[0];
+  // Pick the cheapest available courier for the customer-facing estimate
+  const sorted = [...couriers].sort(
+    (a, b) =>
+      Number(a.rate ?? a.freight_charge ?? 0) -
+      Number(b.rate ?? b.freight_charge ?? 0),
+  );
+  const courier = sorted[0];
   const days = Number(courier.etd ?? courier.estimated_delivery_days ?? 5) || 5;
+  const rate =
+    Number(courier.rate ?? courier.freight_charge ?? 0) || null;
   const estimated = new Date();
   estimated.setDate(estimated.getDate() + days);
   return {
     available: true,
     estimatedDays: days,
     courierName: courier.courier_name ?? courier.name ?? null,
+    rate,
     estimatedDeliveryDate: estimated,
   };
 }
