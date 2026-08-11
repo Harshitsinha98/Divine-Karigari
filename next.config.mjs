@@ -18,12 +18,12 @@ const nextConfig = {
       "form-action 'self'",
       "frame-ancestors 'none'",
       "object-src 'none'",
-      `script-src 'self' 'unsafe-inline'${development ? " 'unsafe-eval'" : ""} https://checkout.razorpay.com https://www.googletagmanager.com https://connect.facebook.net`,
-      "style-src 'self' 'unsafe-inline'",
+      `script-src 'self' 'unsafe-inline'${development ? " 'unsafe-eval'" : ""} https://checkout.razorpay.com https://www.googletagmanager.com https://connect.facebook.net https://www.gstatic.com https://www.google.com https://apis.google.com https://identitytoolkit.googleapis.com`,
+      "style-src 'self' 'unsafe-inline' https://www.gstatic.com",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://*.google-analytics.com https://*.analytics.google.com https://connect.facebook.net https://www.facebook.com",
-      "frame-src https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com",
+      "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://*.google-analytics.com https://*.analytics.google.com https://connect.facebook.net https://www.facebook.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://firebasestorage.googleapis.com",
+      "frame-src https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com https://www.google.com https://*.firebaseapp.com",
       ...(development ? [] : ["upgrade-insecure-requests"]),
     ].join("; ");
     return [
