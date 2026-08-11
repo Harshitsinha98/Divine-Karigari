@@ -33,6 +33,13 @@ function csrfAllowed(request: NextRequest) {
       allowed.add(new URL(process.env.NEXT_PUBLIC_APP_URL).origin);
     } catch {}
   }
+  // Trust the forwarded host (Vercel sets this to the request domain).
+  // This keeps same-origin POSTs working even if NEXT_PUBLIC_APP_URL is unset.
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
+  if (forwardedHost) {
+    allowed.add(`${forwardedProto}://${forwardedHost}`);
+  }
   return allowed.has(origin);
 }
 
@@ -51,7 +58,13 @@ export async function middleware(request: NextRequest) {
       { status: 403 },
     );
   if (request.nextUrl.pathname.startsWith("/api/")) {
-    const auth = request.nextUrl.pathname.startsWith("/api/auth/");
+    // Only strictly rate-limit auth *write* endpoints (login, signup, otp,
+    // password, social sign-in). Read-only endpoints like /api/auth/me run
+    // on every page load and must not consume the strict auth budget.
+    const auth =
+      request.nextUrl.pathname.startsWith("/api/auth/") &&
+      request.nextUrl.pathname !== "/api/auth/me" &&
+      request.method !== "GET";
     const webhook = webhookPaths.has(request.nextUrl.pathname);
     const sensitive =
       auth ||
@@ -66,7 +79,7 @@ export async function middleware(request: NextRequest) {
           : sensitive
             ? "sensitive-api"
             : "api",
-      limit: webhook ? 600 : auth ? 12 : sensitive ? 40 : 180,
+      limit: webhook ? 600 : auth ? 30 : sensitive ? 40 : 180,
       windowSeconds: auth ? 900 : 60,
     });
     if (!result.allowed)
