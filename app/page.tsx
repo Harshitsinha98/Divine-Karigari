@@ -171,7 +171,7 @@ export default async function Home() {
                   <span className="text-gradient-gold">remembered.</span>
                 </h2>
                 <p className="mt-3 max-w-md text-base text-muted-ink">
-                  Our community's favorites — pieces that keep getting chosen for their craft and care.
+                  Our community&apos;s favorites — pieces that keep getting chosen for their craft and care.
                 </p>
               </div>
               <Link
@@ -294,7 +294,7 @@ export default async function Home() {
                 <span className="text-gold">with you.</span>
               </h2>
               <p className="mt-3 max-w-md text-base text-parchment/60">
-                Don't take our word for it — hear from people who've gifted with love.
+                Don&apos;t take our word for it — hear from people who&apos;ve gifted with love.
               </p>
             </div>
           </Reveal>
