@@ -1,3 +1,5 @@
+"use client";
+
 export function SortSelect({ value }: { value?: string }) {
   return (
     <label className="flex items-center gap-3 text-sm text-muted-ink">
