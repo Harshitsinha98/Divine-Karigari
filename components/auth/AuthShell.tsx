@@ -100,7 +100,7 @@ export function AuthShell({
   const fullPhone = `+91${otpPhone}`;
   const phoneValid = /^[6-9]\d{9}$/.test(otpPhone);
 
-  // OTP Send
+  // OTP Send via Firebase
   const sendOtp = async () => {
     if (!phoneValid) {
       setError("Enter a valid 10-digit Indian mobile number.");
@@ -110,23 +110,39 @@ export function AuthShell({
     setError("");
     setMessage("");
 
-    const response = await fetch("/api/auth/otp/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: fullPhone }),
-    });
-    const data = await response.json();
-    setLoading(false);
+    try {
+      const { auth } = await import("@/lib/firebase/config");
+      const { RecaptchaVerifier, signInWithPhoneNumber } = await import("firebase/auth");
 
-    if (!response.ok) {
-      setError(data.error ?? "Unable to send OTP.");
-      return;
+      // Create invisible reCAPTCHA (only once)
+      if (!(window as unknown as Record<string, unknown>).__recaptchaVerifier) {
+        (window as unknown as Record<string, unknown>).__recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+          size: "invisible",
+        });
+      }
+
+      const verifier = (window as unknown as Record<string, unknown>).__recaptchaVerifier as import("firebase/auth").RecaptchaVerifier;
+      const result = await signInWithPhoneNumber(auth, fullPhone, verifier);
+      (window as unknown as Record<string, unknown>).__confirmationResult = result;
+
+      setOtpSent(true);
+      setMessage(`OTP sent to ${fullPhone}. Check your phone.`);
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string; message?: string };
+      console.error("[otp-send] Firebase error:", firebaseError);
+      if (firebaseError.code === "auth/too-many-requests") {
+        setError("Too many attempts. Please try again later.");
+      } else if (firebaseError.code === "auth/invalid-phone-number") {
+        setError("Invalid phone number. Please check and try again.");
+      } else {
+        setError(firebaseError.message ?? "Unable to send OTP. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
-    setOtpSent(true);
-    setMessage(`OTP sent to ${fullPhone}. Check your phone.`);
   };
 
-  // OTP Verify
+  // OTP Verify via Firebase
   const verifyOtp = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!otpSent) {
@@ -137,19 +153,49 @@ export function AuthShell({
     setError("");
     setMessage("");
 
-    const response = await fetch("/api/auth/otp/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: fullPhone, otp: otpCode }),
-    });
-    const data = await response.json();
-    setLoading(false);
+    try {
+      const confirmationResult = (window as unknown as Record<string, unknown>).__confirmationResult as import("firebase/auth").ConfirmationResult;
+      if (!confirmationResult) {
+        setError("Session expired. Please request a new OTP.");
+        setOtpSent(false);
+        setLoading(false);
+        return;
+      }
 
-    if (!response.ok) {
-      setError(data.error ?? "Invalid OTP.");
-      return;
+      const credential = await confirmationResult.confirm(otpCode);
+      const user = credential.user;
+
+      // Send verified phone to our API to create/find user and set session
+      const response = await fetch("/api/auth/firebase/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: user.phoneNumber,
+          uid: user.uid,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error ?? "Sign-in failed.");
+        setLoading(false);
+        return;
+      }
+
+      router.push(nextPath || "/account");
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string; message?: string };
+      console.error("[otp-verify] Firebase error:", firebaseError);
+      if (firebaseError.code === "auth/invalid-verification-code") {
+        setError("Invalid OTP. Please check and try again.");
+      } else if (firebaseError.code === "auth/code-expired") {
+        setError("OTP expired. Please request a new one.");
+        setOtpSent(false);
+      } else {
+        setError(firebaseError.message ?? "Verification failed.");
+      }
+      setLoading(false);
     }
-    router.push(nextPath || "/account");
   };
 
   // Google OAuth
@@ -411,6 +457,9 @@ export function AuthShell({
             </form>
           )}
         </div>
+
+        {/* Invisible reCAPTCHA container for Firebase phone auth */}
+        <div id="recaptcha-container" />
 
         {/* Bottom links */}
         <p className="mt-6 text-center text-sm text-muted-ink">
