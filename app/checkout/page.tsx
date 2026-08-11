@@ -288,76 +288,112 @@ export default function CheckoutPage() {
                     + Add a new delivery address
                   </button>
                   {addingAddress && (
-                    <div className="grid gap-3 rounded-soft border border-sand-line p-4 sm:grid-cols-2">
-                      <Input
-                        required
-                        placeholder="Recipient name"
-                        value={newAddress.recipientName}
-                        onChange={(e) =>
-                          setNewAddress({
-                            ...newAddress,
-                            recipientName: e.target.value,
-                          })
-                        }
-                      />
-                      <Input
-                        required
-                        placeholder="Phone"
-                        value={newAddress.phone}
-                        onChange={(e) =>
-                          setNewAddress({
-                            ...newAddress,
-                            phone: e.target.value,
-                          })
-                        }
-                      />
-                      <Input
-                        required
-                        className="sm:col-span-2"
-                        placeholder="Address line"
-                        value={newAddress.line1}
-                        onChange={(e) =>
-                          setNewAddress({
-                            ...newAddress,
-                            line1: e.target.value,
-                          })
-                        }
-                      />
-                      <Input
-                        placeholder="Apartment, landmark (optional)"
-                        value={newAddress.line2}
-                        onChange={(e) =>
-                          setNewAddress({
-                            ...newAddress,
-                            line2: e.target.value,
-                          })
-                        }
-                      />
-                      <StateCitySelect
-                        state={newAddress.state}
-                        city={newAddress.city}
-                        onStateChange={(state) =>
-                          setNewAddress({ ...newAddress, state })
-                        }
-                        onCityChange={(city) =>
-                          setNewAddress({ ...newAddress, city })
-                        }
-                      />
-                      <Input
-                        required
-                        inputMode="numeric"
-                        maxLength={6}
-                        placeholder="Postal code (6-digit pincode)"
-                        value={newAddress.postalCode}
-                        onChange={(e) =>
-                          setNewAddress({
-                            ...newAddress,
-                            postalCode: e.target.value
-                              .replace(/\D/g, "")
-                              .slice(0, 6),
-                          })
-                        }
-                      />
+                    <div className="rounded-soft-xl border border-sand-line bg-warm-white p-5 shadow-soft sm:p-6">
+                      <h3 className="mb-4 font-display text-xl">New delivery address</h3>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <Input
+                          required
+                          placeholder="Recipient name"
+                          value={newAddress.recipientName}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              recipientName: e.target.value,
+                            })
+                          }
+                        />
+                        <Input
+                          required
+                          placeholder="Phone (+91)"
+                          type="tel"
+                          value={newAddress.phone}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              phone: e.target.value,
+                            })
+                          }
+                        />
+                        <Input
+                          required
+                          className="sm:col-span-2"
+                          placeholder="House/Flat no., Building, Street"
+                          value={newAddress.line1}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              line1: e.target.value,
+                            })
+                          }
+                        />
+                        <Input
+                          className="sm:col-span-2"
+                          placeholder="Landmark (e.g. Near Metro Station, Opposite Park)"
+                          value={newAddress.line2}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              line2: e.target.value,
+                            })
+                          }
+                        />
+                        {/* Pincode with auto-fill */}
+                        <div className="sm:col-span-2">
+                          <div className="flex items-stretch overflow-hidden rounded-soft border border-sand-line bg-parchment transition focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/20">
+                            <input
+                              required
+                              inputMode="numeric"
+                              maxLength={6}
+                              placeholder="6-digit Pincode"
+                              value={newAddress.postalCode}
+                              onChange={async (e) => {
+                                const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                                setNewAddress({ ...newAddress, postalCode: val });
+                                // Auto-fill state & city when 6 digits entered
+                                if (val.length === 6) {
+                                  try {
+                                    const res = await fetch(`/api/pincode/lookup?pincode=${val}`);
+                                    if (res.ok) {
+                                      const { data } = await res.json();
+                                      setNewAddress((prev) => ({
+                                        ...prev,
+                                        postalCode: val,
+                                        state: data.state || prev.state,
+                                        city: data.city || prev.city,
+                                      }));
+                                    }
+                                  } catch {}
+                                }
+                              }}
+                              className="h-12 flex-1 bg-transparent px-4 text-sm text-ink outline-none placeholder:text-muted-ink/60"
+                            />
+                            {newAddress.postalCode.length === 6 && newAddress.state && (
+                              <span className="flex items-center gap-1 border-l border-sand-line bg-tulsi/5 px-3 text-xs text-tulsi">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                                {newAddress.city}, {newAddress.state}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1.5 text-xs text-muted-ink/70">
+                            City & state will auto-fill when you enter the pincode
+                          </p>
+                        </div>
+                        <StateCitySelect
+                          state={newAddress.state}
+                          city={newAddress.city}
+                          onStateChange={(state) =>
+                            setNewAddress({ ...newAddress, state })
+                          }
+                          onCityChange={(city) =>
+                            setNewAddress({ ...newAddress, city })
+                          }
+                        />
+                      </div>
+                      <div className="mt-5 flex gap-2">
+                        <Button type="button" onClick={() => setAddingAddress(false)} variant="ghost">
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
