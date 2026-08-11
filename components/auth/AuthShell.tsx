@@ -135,15 +135,26 @@ export function AuthShell({
       setMessage(`OTP sent to ${fullPhone}.`);
     } catch (err: unknown) {
       resetRecaptcha();
-      const e = err as { code?: string; message?: string };
-      console.error("[otp-send] Firebase error:", e);
+      const e = err as {
+        code?: string;
+        message?: string;
+        customData?: unknown;
+      };
+      // Log full error object so the real underlying cause is visible
+      // in the browser console (Firebase often wraps the real reason).
+      console.error("[otp-send] Firebase error:", {
+        code: e.code,
+        message: e.message,
+        customData: e.customData,
+        raw: err,
+      });
       if (e.code === "auth/too-many-requests")
         setError("Too many attempts. Please try again later.");
       else if (e.code === "auth/invalid-phone-number")
         setError("Invalid phone number. Please check and try again.");
       else if (e.code === "auth/internal-error")
         setError(
-          "OTP service is unavailable. Please try Google sign-in below.",
+          `OTP service is unavailable (${e.message ?? "internal error"}). Please try Google sign-in below, or check the browser console for details.`,
         );
       else setError(e.message ?? "Unable to send OTP. Try Google sign-in.");
     } finally {
