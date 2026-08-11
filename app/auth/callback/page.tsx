@@ -1,22 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
-/**
- * This page handles the OAuth callback from Supabase.
- * Supabase redirects here with tokens in the URL hash fragment (#access_token=...)
- * Since hash fragments are only available client-side, this must be a client component.
- * 
- * Flow:
- * 1. Supabase redirects here with #access_token=... in URL
- * 2. We extract the access_token from the hash
- * 3. We call our server API with the token to create a session
- * 4. Server verifies token, finds/creates user, sets cookie
- * 5. We redirect to the destination
- */
-export default function AuthCallbackPage() {
+export const dynamic = "force-dynamic";
+
+function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/account";
@@ -103,5 +93,23 @@ export default function AuthCallbackPage() {
         <p className="mt-4 text-sm text-muted-ink">{status}</p>
       </div>
     </main>
+  );
+}
+
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-[500px] items-center justify-center">
+          <div className="text-center">
+            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+            <p className="mt-4 text-sm text-muted-ink">Loading...</p>
+          </div>
+        </main>
+      }
+    >
+      <CallbackHandler />
+    </Suspense>
   );
 }
