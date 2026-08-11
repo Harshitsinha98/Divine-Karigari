@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -172,6 +173,16 @@ export function AuthShell({
     setError("");
     setMessage("");
 
+    // Guard against a hung promise (network stall, blocked request, etc.)
+    // so the button never gets stuck on "Verifying..." forever.
+    const withTimeout = <T,>(promise: Promise<T>, ms: number) =>
+      Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), ms),
+        ),
+      ]);
+
     try {
       const w = window as unknown as Record<string, unknown>;
       const confirmationResult =
@@ -183,26 +194,42 @@ export function AuthShell({
         return;
       }
 
-      const credential = await confirmationResult.confirm(otpCode);
+      const credential = await withTimeout(
+        confirmationResult.confirm(otpCode),
+        15000,
+      );
       const user = credential.user;
 
-      const response = await fetch("/api/auth/firebase/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: user.phoneNumber, uid: user.uid }),
-      });
+      const response = await withTimeout(
+        fetch("/api/auth/firebase/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: user.phoneNumber, uid: user.uid }),
+        }),
+        15000,
+      );
 
       if (!response.ok) {
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
         setError(data.error ?? "Sign-in failed.");
         setLoading(false);
         return;
       }
+
+      setLoading(false);
       router.push(nextPath || "/account");
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
-      console.error("[otp-verify] Firebase error:", e);
-      if (e.code === "auth/invalid-verification-code")
+      console.error("[otp-verify] Firebase error:", {
+        code: e.code,
+        message: e.message,
+        raw: err,
+      });
+      if (e.message === "timeout")
+        setError(
+          "Verification is taking too long. Please check your connection and try again.",
+        );
+      else if (e.code === "auth/invalid-verification-code")
         setError("Invalid OTP. Please check and try again.");
       else if (e.code === "auth/code-expired") {
         setError("OTP expired. Please request a new one.");
@@ -228,51 +255,65 @@ export function AuthShell({
     return (
       <main className="container flex min-h-[calc(100vh-72px)] items-center justify-center py-10 sm:py-16">
         <div className="grid w-full max-w-4xl overflow-hidden rounded-soft-2xl border border-sand-line bg-warm-white shadow-lift-lg md:grid-cols-2">
-          {/* LEFT: Branding + Promo */}
-          <div className="relative hidden overflow-hidden bg-tulsi p-10 text-parchment md:flex md:flex-col md:justify-between">
-            {/* Decorative orbs */}
-            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-gradient-radial from-gold/20 to-transparent blur-2xl" />
-            <div className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-gradient-radial from-parchment/10 to-transparent blur-2xl" />
+          {/* LEFT: Aspirational gift photo + Promo */}
+          <div className="relative hidden overflow-hidden md:flex md:flex-col md:justify-between">
+            {/* Full-bleed lifestyle photo */}
+            <Image
+              src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=1000&q=80"
+              alt="Beautifully wrapped handcrafted gift with festive decor"
+              fill
+              sizes="50vw"
+              priority
+              className="object-cover"
+            />
+            {/* Gradient overlay for text legibility + brand tint */}
+            <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/20" />
+            <div className="absolute inset-0 bg-tulsi/30 mix-blend-multiply" />
 
-            <div className="relative">
+            {/* Decorative glow orbs */}
+            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-gradient-radial from-gold/25 to-transparent blur-2xl" />
+
+            <div className="relative z-10 p-10 text-parchment">
               <p className="font-display text-2xl">
                 Divine <span className="text-gold">Karigari</span>
               </p>
-              <p className="mt-2 text-xs uppercase tracking-[0.25em] text-parchment/50">
+              <p className="mt-2 text-xs uppercase tracking-[0.25em] text-parchment/60">
                 Artistry &amp; Spirit
               </p>
             </div>
 
-            {/* Promo / offer */}
-            <div className="relative my-10">
-              <span className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-medium text-gold">
+            {/* Promo / offer — anchored near bottom over the image */}
+            <div className="relative z-10 p-10">
+              <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-xs font-medium text-gold backdrop-blur-sm">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
                 Limited time
               </span>
-              <h2 className="mt-4 font-display text-4xl leading-tight">
-                Get <span className="text-gold">15% off</span> your first order.
+              <h2 className="mt-4 font-display text-4xl leading-tight text-parchment">
+                A gift they&apos;ll{" "}
+                <span className="text-gold">never forget.</span>
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-parchment/70">
-                Sign in to unlock your welcome offer, save your favourite gifts,
-                and track every order — all in one place.
+              <p className="mt-3 text-sm leading-relaxed text-parchment/80">
+                Get <span className="font-semibold text-gold">15% off</span>{" "}
+                your first order — handcrafted pieces, wrapped with love,
+                delivered to their door.
               </p>
-            </div>
 
-            {/* Trust badges */}
-            <div className="relative flex items-center gap-5 border-t border-parchment/10 pt-6 text-xs text-parchment/60">
-              <div>
-                <p className="font-display text-xl text-parchment">2000+</p>
-                <p>Happy gifters</p>
-              </div>
-              <div className="h-8 w-px bg-parchment/10" />
-              <div>
-                <p className="font-display text-xl text-parchment">4.9★</p>
-                <p>Avg rating</p>
-              </div>
-              <div className="h-8 w-px bg-parchment/10" />
-              <div>
-                <p className="font-display text-xl text-parchment">Free</p>
-                <p>Shipping ₹999+</p>
+              {/* Trust badges */}
+              <div className="mt-6 flex items-center gap-5 border-t border-parchment/15 pt-5 text-xs text-parchment/70">
+                <div>
+                  <p className="font-display text-xl text-parchment">2000+</p>
+                  <p>Happy gifters</p>
+                </div>
+                <div className="h-8 w-px bg-parchment/15" />
+                <div>
+                  <p className="font-display text-xl text-parchment">4.9★</p>
+                  <p>Avg rating</p>
+                </div>
+                <div className="h-8 w-px bg-parchment/15" />
+                <div>
+                  <p className="font-display text-xl text-parchment">Free</p>
+                  <p>Shipping ₹999+</p>
+                </div>
               </div>
             </div>
           </div>
