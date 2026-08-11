@@ -2,20 +2,22 @@
 
 import { motion, type MotionProps } from "framer-motion";
 import type { ReactNode } from "react";
-import { slideUp } from "@/lib/motion";
+import { fadeInUp } from "@/lib/motion";
 
 export function Reveal({
   children,
   className,
+  delay = 0,
   ...props
-}: { children: ReactNode; className?: string } & MotionProps) {
+}: { children: ReactNode; className?: string; delay?: number } & MotionProps) {
   return (
     <motion.div
       className={className}
-      variants={slideUp}
+      variants={fadeInUp}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, amount: 0.12 }}
+      viewport={{ once: true, amount: 0.1 }}
+      transition={{ delay }}
       {...props}
     >
       {children}
