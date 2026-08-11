@@ -33,21 +33,18 @@ export function AuthShell({
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState(oauthError ? getOAuthErrorMessage(oauthError) : "");
+  const [error, setError] = useState(
+    oauthError ? getOAuthErrorMessage(oauthError) : "",
+  );
   const [loading, setLoading] = useState(false);
 
-  const heading =
-    mode === "login"
-      ? "Welcome back."
-      : mode === "signup"
-        ? "Begin your gifting story."
-        : mode === "forgot"
-          ? "A way back in."
-          : mode === "reset"
-            ? "Choose a new password."
-            : "Sign in with OTP.";
+  // Full E.164 phone with India country code (+91)
+  const fullPhone = `+91${otpPhone}`;
+  const phoneValid = /^[6-9]\d{9}$/.test(otpPhone);
 
-  // Email/Password submit
+  // ─────────────────────────────────────────────
+  //  EMAIL / PASSWORD (for /signup, /forgot, /reset)
+  // ─────────────────────────────────────────────
   const submitEmailPassword = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -61,13 +58,11 @@ export function AuthShell({
     }
 
     const endpoint =
-      mode === "login"
-        ? "/api/auth/login"
-        : mode === "signup"
-          ? "/api/auth/signup"
-          : mode === "forgot"
-            ? "/api/auth/forgot-password"
-            : "/api/auth/reset-password";
+      mode === "signup"
+        ? "/api/auth/signup"
+        : mode === "forgot"
+          ? "/api/auth/forgot-password"
+          : "/api/auth/reset-password";
 
     const body =
       mode === "reset"
@@ -88,19 +83,26 @@ export function AuthShell({
       setError(data.error ?? "Something went wrong.");
       return;
     }
-    if (mode === "login" || mode === "signup")
-      router.push(nextPath || "/account");
+    if (mode === "signup") router.push(nextPath || "/account");
     else if (mode === "reset") {
       setMessage("Your password has been updated. You can now sign in.");
       router.push("/login");
     } else setMessage(data.message);
   };
 
-  // Full E.164 phone with India country code (+91)
-  const fullPhone = `+91${otpPhone}`;
-  const phoneValid = /^[6-9]\d{9}$/.test(otpPhone);
+  // ─────────────────────────────────────────────
+  //  FIREBASE PHONE OTP
+  // ─────────────────────────────────────────────
+  const resetRecaptcha = () => {
+    const w = window as unknown as Record<string, unknown>;
+    if (w.__recaptchaVerifier) {
+      try {
+        (w.__recaptchaVerifier as { clear: () => void }).clear();
+      } catch {}
+      w.__recaptchaVerifier = undefined;
+    }
+  };
 
-  // OTP Send via Firebase
   const sendOtp = async () => {
     if (!phoneValid) {
       setError("Enter a valid 10-digit Indian mobile number.");
@@ -112,37 +114,43 @@ export function AuthShell({
 
     try {
       const { auth } = await import("@/lib/firebase/config");
-      const { RecaptchaVerifier, signInWithPhoneNumber } = await import("firebase/auth");
+      const { RecaptchaVerifier, signInWithPhoneNumber } = await import(
+        "firebase/auth"
+      );
 
-      // Create invisible reCAPTCHA (only once)
-      if (!(window as unknown as Record<string, unknown>).__recaptchaVerifier) {
-        (window as unknown as Record<string, unknown>).__recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-          size: "invisible",
-        });
-      }
+      const w = window as unknown as Record<string, unknown>;
 
-      const verifier = (window as unknown as Record<string, unknown>).__recaptchaVerifier as import("firebase/auth").RecaptchaVerifier;
+      // Always start with a fresh verifier to avoid stale state / internal errors
+      resetRecaptcha();
+      const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+        size: "invisible",
+      });
+      w.__recaptchaVerifier = verifier;
+      await verifier.render();
+
       const result = await signInWithPhoneNumber(auth, fullPhone, verifier);
-      (window as unknown as Record<string, unknown>).__confirmationResult = result;
+      w.__confirmationResult = result;
 
       setOtpSent(true);
-      setMessage(`OTP sent to ${fullPhone}. Check your phone.`);
+      setMessage(`OTP sent to ${fullPhone}.`);
     } catch (err: unknown) {
-      const firebaseError = err as { code?: string; message?: string };
-      console.error("[otp-send] Firebase error:", firebaseError);
-      if (firebaseError.code === "auth/too-many-requests") {
+      resetRecaptcha();
+      const e = err as { code?: string; message?: string };
+      console.error("[otp-send] Firebase error:", e);
+      if (e.code === "auth/too-many-requests")
         setError("Too many attempts. Please try again later.");
-      } else if (firebaseError.code === "auth/invalid-phone-number") {
+      else if (e.code === "auth/invalid-phone-number")
         setError("Invalid phone number. Please check and try again.");
-      } else {
-        setError(firebaseError.message ?? "Unable to send OTP. Please try again.");
-      }
+      else if (e.code === "auth/internal-error")
+        setError(
+          "OTP service is unavailable. Please try Google sign-in below.",
+        );
+      else setError(e.message ?? "Unable to send OTP. Try Google sign-in.");
     } finally {
       setLoading(false);
     }
   };
 
-  // OTP Verify via Firebase
   const verifyOtp = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!otpSent) {
@@ -154,7 +162,9 @@ export function AuthShell({
     setMessage("");
 
     try {
-      const confirmationResult = (window as unknown as Record<string, unknown>).__confirmationResult as import("firebase/auth").ConfirmationResult;
+      const w = window as unknown as Record<string, unknown>;
+      const confirmationResult =
+        w.__confirmationResult as import("firebase/auth").ConfirmationResult;
       if (!confirmationResult) {
         setError("Session expired. Please request a new OTP.");
         setOtpSent(false);
@@ -165,14 +175,10 @@ export function AuthShell({
       const credential = await confirmationResult.confirm(otpCode);
       const user = credential.user;
 
-      // Send verified phone to our API to create/find user and set session
       const response = await fetch("/api/auth/firebase/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: user.phoneNumber,
-          uid: user.uid,
-        }),
+        body: JSON.stringify({ phone: user.phoneNumber, uid: user.uid }),
       });
 
       if (!response.ok) {
@@ -181,112 +187,105 @@ export function AuthShell({
         setLoading(false);
         return;
       }
-
       router.push(nextPath || "/account");
     } catch (err: unknown) {
-      const firebaseError = err as { code?: string; message?: string };
-      console.error("[otp-verify] Firebase error:", firebaseError);
-      if (firebaseError.code === "auth/invalid-verification-code") {
+      const e = err as { code?: string; message?: string };
+      console.error("[otp-verify] Firebase error:", e);
+      if (e.code === "auth/invalid-verification-code")
         setError("Invalid OTP. Please check and try again.");
-      } else if (firebaseError.code === "auth/code-expired") {
+      else if (e.code === "auth/code-expired") {
         setError("OTP expired. Please request a new one.");
         setOtpSent(false);
-      } else {
-        setError(firebaseError.message ?? "Verification failed.");
-      }
+      } else setError(e.message ?? "Verification failed.");
       setLoading(false);
     }
   };
 
-  // Google OAuth
+  // ─────────────────────────────────────────────
+  //  GOOGLE OAUTH
+  // ─────────────────────────────────────────────
   const signInWithGoogle = () => {
     const params = new URLSearchParams();
     if (nextPath) params.set("next", nextPath);
     window.location.href = `/api/auth/google?${params.toString()}`;
   };
 
-  return (
-    <main className="container flex min-h-[600px] items-center justify-center py-16">
-      <div className="w-full max-w-md">
-        <p className="text-center text-xs uppercase tracking-[0.22em] text-oxblood">
-          Divine Karigari
-        </p>
-        <h1 className="mt-4 text-center font-display text-5xl leading-tight">
-          {heading}
-        </h1>
+  // ═════════════════════════════════════════════
+  //  OTP MODE → Two-column branded card
+  // ═════════════════════════════════════════════
+  if (mode === "otp" || mode === "login") {
+    return (
+      <main className="container flex min-h-[calc(100vh-72px)] items-center justify-center py-10 sm:py-16">
+        <div className="grid w-full max-w-4xl overflow-hidden rounded-soft-2xl border border-sand-line bg-warm-white shadow-lift-lg md:grid-cols-2">
+          {/* LEFT: Branding + Promo */}
+          <div className="relative hidden overflow-hidden bg-tulsi p-10 text-parchment md:flex md:flex-col md:justify-between">
+            {/* Decorative orbs */}
+            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-gradient-radial from-gold/20 to-transparent blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-gradient-radial from-parchment/10 to-transparent blur-2xl" />
 
-        {mode === "forgot" && (
-          <p className="mt-4 text-center text-sm leading-7 text-muted-ink">
-            Enter your email and we&apos;ll send reset instructions if we find
-            an account.
-          </p>
-        )}
+            <div className="relative">
+              <p className="font-display text-2xl">
+                Divine <span className="text-gold">Karigari</span>
+              </p>
+              <p className="mt-2 text-xs uppercase tracking-[0.25em] text-parchment/50">
+                Artistry &amp; Spirit
+              </p>
+            </div>
 
-        <div className="mt-10 rounded-soft-xl border border-sand-line p-6 sm:p-8">
-          {/* ══════════════════════════════════════
-              GOOGLE SIGN-IN BUTTON
-          ══════════════════════════════════════ */}
-          {(mode === "login" || mode === "signup") && (
-            <>
-              <button
-                type="button"
-                onClick={signInWithGoogle}
-                className="flex w-full items-center justify-center gap-3 rounded-soft border border-sand-line bg-white px-4 py-3 text-sm font-medium text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-gold/50 hover:shadow-soft"
-              >
-                <GoogleIcon />
-                Continue with Google
-              </button>
+            {/* Promo / offer */}
+            <div className="relative my-10">
+              <span className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-medium text-gold">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+                Limited time
+              </span>
+              <h2 className="mt-4 font-display text-4xl leading-tight">
+                Get <span className="text-gold">15% off</span> your first order.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-parchment/70">
+                Sign in to unlock your welcome offer, save your favourite gifts,
+                and track every order — all in one place.
+              </p>
+            </div>
 
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-sand-line" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-parchment px-3 text-muted-ink">or</span>
-                </div>
+            {/* Trust badges */}
+            <div className="relative flex items-center gap-5 border-t border-parchment/10 pt-6 text-xs text-parchment/60">
+              <div>
+                <p className="font-display text-xl text-parchment">2000+</p>
+                <p>Happy gifters</p>
               </div>
-
-              {/* ══════════════════════════════════════
-                  AUTH METHOD TABS (Email / Phone OTP)
-              ══════════════════════════════════════ */}
-              <div className="mb-5 flex rounded-soft border border-sand-line p-1">
-                <button
-                  type="button"
-                  onClick={() => { setMode(initialMode); setError(""); setMessage(""); }}
-                  className={`flex-1 rounded-[6px] py-2 text-xs font-medium transition-all ${
-                    (mode as string) !== "otp"
-                      ? "bg-ink text-parchment shadow-sm"
-                      : "text-muted-ink hover:text-ink"
-                  }`}
-                >
-                  Email & Password
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setMode("otp"); setError(""); setMessage(""); setOtpSent(false); }}
-                  className={`flex-1 rounded-[6px] py-2 text-xs font-medium transition-all ${
-                    (mode as string) === "otp"
-                      ? "bg-ink text-parchment shadow-sm"
-                      : "text-muted-ink hover:text-ink"
-                  }`}
-                >
-                  Phone OTP
-                </button>
+              <div className="h-8 w-px bg-parchment/10" />
+              <div>
+                <p className="font-display text-xl text-parchment">4.9★</p>
+                <p>Avg rating</p>
               </div>
-            </>
-          )}
+              <div className="h-8 w-px bg-parchment/10" />
+              <div>
+                <p className="font-display text-xl text-parchment">Free</p>
+                <p>Shipping ₹999+</p>
+              </div>
+            </div>
+          </div>
 
-          {/* ══════════════════════════════════════
-              OTP FLOW (India +91 predefined)
-          ══════════════════════════════════════ */}
-          {mode === "otp" && (
+          {/* RIGHT: OTP form */}
+          <div className="p-8 sm:p-10">
+            <div className="mb-8">
+              <p className="text-xs uppercase tracking-[0.22em] text-oxblood md:hidden">
+                Divine Karigari
+              </p>
+              <h1 className="mt-2 font-display text-3xl leading-tight sm:text-4xl">
+                Sign in
+              </h1>
+              <p className="mt-2 text-sm text-muted-ink">
+                Enter your mobile number to receive a one-time password.
+              </p>
+            </div>
+
             <form onSubmit={verifyOtp} className="grid gap-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-muted-ink">
                   Mobile number
                 </label>
                 <div className="flex items-stretch overflow-hidden rounded-soft border border-sand-line bg-parchment transition focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/20">
-                  {/* Fixed +91 prefix */}
                   <span className="flex items-center gap-1.5 border-r border-sand-line bg-sand-line/20 px-3 text-sm font-medium text-ink">
                     <span className="text-base">🇮🇳</span>
                     +91
@@ -298,7 +297,9 @@ export function AuthShell({
                     maxLength={10}
                     value={otpPhone}
                     onChange={(e) =>
-                      setOtpPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                      setOtpPhone(
+                        e.target.value.replace(/\D/g, "").slice(0, 10),
+                      )
                     }
                     placeholder="98765 43210"
                     disabled={otpSent}
@@ -373,108 +374,170 @@ export function AuthShell({
               {error && <p className="text-sm text-oxblood">{error}</p>}
               {message && <p className="text-sm text-tulsi">{message}</p>}
             </form>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-sand-line" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-warm-white px-3 text-muted-ink">
+                  or continue with
+                </span>
+              </div>
+            </div>
+
+            {/* Google fallback */}
+            <button
+              type="button"
+              onClick={signInWithGoogle}
+              className="flex w-full items-center justify-center gap-3 rounded-soft border border-sand-line bg-white px-4 py-3 text-sm font-medium text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-gold/50 hover:shadow-soft"
+            >
+              <GoogleIcon />
+              Sign in with Google
+            </button>
+
+            {/* Email login link */}
+            <p className="mt-6 text-center text-sm text-muted-ink">
+              Prefer email?{" "}
+              <Link
+                href="/signup"
+                className="text-oxblood hover:text-gold"
+              >
+                Create an account
+              </Link>
+            </p>
+
+            {/* Invisible reCAPTCHA container */}
+            <div id="recaptcha-container" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ═════════════════════════════════════════════
+  //  EMAIL / PASSWORD MODES (signup / forgot / reset)
+  // ═════════════════════════════════════════════
+  const heading =
+    mode === "signup"
+      ? "Begin your gifting story."
+      : mode === "forgot"
+        ? "A way back in."
+        : "Choose a new password.";
+
+  return (
+    <main className="container flex min-h-[600px] items-center justify-center py-16">
+      <div className="w-full max-w-md">
+        <p className="text-center text-xs uppercase tracking-[0.22em] text-oxblood">
+          Divine Karigari
+        </p>
+        <h1 className="mt-4 text-center font-display text-5xl leading-tight">
+          {heading}
+        </h1>
+
+        {mode === "forgot" && (
+          <p className="mt-4 text-center text-sm leading-7 text-muted-ink">
+            Enter your email and we&apos;ll send reset instructions if we find
+            an account.
+          </p>
+        )}
+
+        <div className="mt-10 rounded-soft-xl border border-sand-line p-6 sm:p-8">
+          {mode === "signup" && (
+            <>
+              <button
+                type="button"
+                onClick={signInWithGoogle}
+                className="flex w-full items-center justify-center gap-3 rounded-soft border border-sand-line bg-white px-4 py-3 text-sm font-medium text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-gold/50 hover:shadow-soft"
+              >
+                <GoogleIcon />
+                Continue with Google
+              </button>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-sand-line" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-parchment px-3 text-muted-ink">or</span>
+                </div>
+              </div>
+            </>
           )}
 
-          {/* ══════════════════════════════════════
-              EMAIL/PASSWORD FLOW
-          ══════════════════════════════════════ */}
-          {mode !== "otp" && (
-            <form onSubmit={submitEmailPassword} className="grid gap-4">
-              {mode === "signup" && (
-                <>
-                  <Input
-                    required
-                    name="name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Full name"
-                  />
-                  <Input
-                    required
-                    name="phone"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="Phone number"
-                  />
-                </>
-              )}
-              {mode !== "reset" && (
+          <form onSubmit={submitEmailPassword} className="grid gap-4">
+            {mode === "signup" && (
+              <>
                 <Input
                   required
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="Email address"
+                  name="name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Full name"
                 />
-              )}
-              {mode !== "forgot" && (
                 <Input
                   required
-                  name="password"
-                  type="password"
-                  minLength={10}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Password"
+                  name="phone"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="Phone number"
                 />
-              )}
-              {mode === "reset" && (
-                <Input
-                  required
-                  name="confirm"
-                  type="password"
-                  minLength={10}
-                  value={form.confirm}
-                  onChange={(e) => setForm({ ...form, confirm: e.target.value })}
-                  placeholder="Confirm password"
-                />
-              )}
+              </>
+            )}
+            {mode !== "reset" && (
+              <Input
+                required
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="Email address"
+              />
+            )}
+            {mode !== "forgot" && (
+              <Input
+                required
+                name="password"
+                type="password"
+                minLength={10}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="Password"
+              />
+            )}
+            {mode === "reset" && (
+              <Input
+                required
+                name="confirm"
+                type="password"
+                minLength={10}
+                value={form.confirm}
+                onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+                placeholder="Confirm password"
+              />
+            )}
 
-              {error && <p className="text-sm text-oxblood">{error}</p>}
-              {message && <p className="text-sm text-tulsi">{message}</p>}
+            {error && <p className="text-sm text-oxblood">{error}</p>}
+            {message && <p className="text-sm text-tulsi">{message}</p>}
 
-              <Button type="submit" disabled={loading}>
-                {loading
-                  ? "Please wait..."
-                  : mode === "login"
-                    ? "Sign in"
-                    : mode === "signup"
-                      ? "Create account"
-                      : mode === "forgot"
-                        ? "Send instructions"
-                        : "Reset password"}
-              </Button>
-
-              {mode === "login" && (
-                <Link
-                  href="/forgot-password"
-                  className="text-center text-sm text-muted-ink hover:text-oxblood"
-                >
-                  Forgot your password?
-                </Link>
-              )}
-            </form>
-          )}
+            <Button type="submit" disabled={loading}>
+              {loading
+                ? "Please wait..."
+                : mode === "signup"
+                  ? "Create account"
+                  : mode === "forgot"
+                    ? "Send instructions"
+                    : "Reset password"}
+            </Button>
+          </form>
         </div>
 
-        {/* Invisible reCAPTCHA container for Firebase phone auth */}
-        <div id="recaptcha-container" />
-
-        {/* Bottom links */}
         <p className="mt-6 text-center text-sm text-muted-ink">
-          {mode === "signup" || mode === "otp" ? (
+          {mode === "signup" ? (
             <>
               Already have an account?{" "}
               <Link href="/login" className="text-oxblood hover:text-gold">
                 Sign in
-              </Link>
-            </>
-          ) : mode === "login" ? (
-            <>
-              New here?{" "}
-              <Link href="/signup" className="text-oxblood hover:text-gold">
-                Create an account
               </Link>
             </>
           ) : (
