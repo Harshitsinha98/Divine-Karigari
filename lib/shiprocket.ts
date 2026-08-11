@@ -116,6 +116,10 @@ export async function checkShiprocketServiceability(
     data.data?.available_courier_companies ??
     data.available_courier_companies ??
     [];
+  // Log raw etd for debugging delivery days parsing
+  if (couriers.length > 0) {
+    console.log("[shiprocket] Raw courier[0] etd:", couriers[0].etd, "estimated_delivery_days:", couriers[0].estimated_delivery_days);
+  }
   if (!couriers.length)
     return {
       available: false,
@@ -130,7 +134,38 @@ export async function checkShiprocketServiceability(
       Number(b.rate ?? b.freight_charge ?? 0),
   );
   const courier = sorted[0];
-  const days = Number(courier.etd ?? courier.estimated_delivery_days ?? 5) || 5;
+
+  // Shiprocket returns etd in various formats:
+  //  - "3-5" (range string)
+  //  - "5" (plain number string)
+  //  - "Jan 17, 2026" (date string)
+  //  - or a numeric field estimated_delivery_days
+  let days: number | null = null;
+  const etdRaw = courier.etd ?? courier.estimated_delivery_days;
+  if (etdRaw !== undefined && etdRaw !== null) {
+    const etdStr = String(etdRaw).trim();
+    // Try parsing "3-5" → take the max (5)
+    const rangeMatch = etdStr.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+    if (rangeMatch) {
+      days = Number(rangeMatch[2]);
+    } else {
+      // Try as pure number
+      const num = Number(etdStr);
+      if (!isNaN(num) && num > 0) {
+        days = num;
+      } else {
+        // Try parsing as a date and compute diff from today
+        const etdDate = new Date(etdStr);
+        if (!isNaN(etdDate.getTime())) {
+          const diffMs = etdDate.getTime() - Date.now();
+          days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+        }
+      }
+    }
+  }
+  // Final fallback only if nothing could be parsed
+  if (!days || days <= 0) days = 5;
+
   const rate =
     Number(courier.rate ?? courier.freight_charge ?? 0) || null;
   const estimated = new Date();
