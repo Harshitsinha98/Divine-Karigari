@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Heart,
   ShoppingBag,
@@ -38,11 +39,18 @@ export function Header() {
     >
       <div className="container flex h-[72px] items-center justify-between gap-5">
         {/* Logo */}
-        <Link
-          href="/"
-          className="font-display text-2xl tracking-tight text-ink transition-transform duration-200 hover:scale-[1.02]"
-        >
-          Divine <span className="text-gradient-gold">Karigari</span>
+        <Link href="/" className="flex items-center gap-2.5 transition-transform duration-200 hover:scale-[1.02]">
+          <Image
+            src="/logo.svg"
+            alt="Divine Karigari"
+            width={44}
+            height={44}
+            className="h-10 w-10 sm:h-11 sm:w-11"
+            priority
+          />
+          <span className="hidden font-display text-lg tracking-tight text-ink sm:block">
+            Divine <span className="text-gradient-gold">Karigari</span>
+          </span>
         </Link>
 
         {/* Desktop nav */}

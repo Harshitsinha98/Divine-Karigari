@@ -41,10 +41,11 @@ export default async function Home() {
         {/* Subtle dot pattern overlay */}
         <div className="pointer-events-none absolute inset-0 -z-10 dot-pattern opacity-[0.03]" />
 
-        <div className="container relative flex min-h-[680px] items-center py-24 sm:min-h-[750px]">
-          {/* Animated Rangoli — now with subtle spin */}
-          <RangoliMotif className="pointer-events-none absolute -right-32 top-10 -z-10 h-[500px] w-[500px] text-gold/50 sm:right-0 sm:h-[620px] sm:w-[620px] animate-spin-slow" />
+        <div className="container relative grid min-h-[680px] items-center gap-10 py-20 sm:min-h-[750px] lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
+          {/* Animated Rangoli — subtle background */}
+          <RangoliMotif className="pointer-events-none absolute -right-32 top-10 -z-10 h-[400px] w-[400px] text-gold/30 sm:right-0 sm:h-[500px] sm:w-[500px] animate-spin-slow" />
 
+          {/* Left: Text content */}
           <HeroIntro>
             <div className="max-w-2xl">
               {/* Modern badge/pill */}
@@ -56,12 +57,12 @@ export default async function Home() {
 
               <HeroEyebrow>
                 <span className="block text-xs font-medium uppercase tracking-[0.3em] text-oxblood/80">
-                  Artisanal gifting · Since 2020
+                  Artisanal gifting &middot; Since 2020
                 </span>
               </HeroEyebrow>
 
               <HeroHeading>
-                <span className="mt-4 block font-display text-5xl leading-[1.05] tracking-tight sm:text-7xl lg:text-8xl">
+                <span className="mt-4 block font-display text-5xl leading-[1.05] tracking-tight sm:text-7xl lg:text-[5.5rem]">
                   Gifts with a<br />
                   little more{" "}
                   <span className="text-gradient-gold">meaning.</span>
@@ -108,6 +109,42 @@ export default async function Home() {
               </HeroCopy>
             </div>
           </HeroIntro>
+
+          {/* Right: Hero visual — floating product collage */}
+          <div className="relative hidden lg:block">
+            <div className="relative aspect-square">
+              {/* Main product image */}
+              <div className="absolute inset-[10%] overflow-hidden rounded-soft-3xl shadow-lift-lg">
+                <Image
+                  src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80"
+                  alt="Handcrafted gift box with artisan details"
+                  fill
+                  sizes="40vw"
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              {/* Small floating card top-right */}
+              <div className="absolute -right-2 top-[5%] rounded-soft-xl border border-sand-line/50 bg-parchment/90 p-4 shadow-lift backdrop-blur-sm animate-float-gentle">
+                <p className="text-xs text-muted-ink">Bestseller</p>
+                <p className="mt-0.5 font-display text-sm">Brass Name Plate</p>
+                <p className="mt-1 text-sm font-medium text-gold">&rupee;2,499</p>
+              </div>
+              {/* Small floating card bottom-left */}
+              <div className="absolute -left-4 bottom-[15%] rounded-soft-xl border border-sand-line/50 bg-parchment/90 p-4 shadow-lift backdrop-blur-sm animate-float-slow">
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-1">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gold/20 text-[10px]">A</span>
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-oxblood/20 text-[10px]">R</span>
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-tulsi/20 text-[10px]">M</span>
+                  </div>
+                  <span className="text-xs text-muted-ink">2000+ happy gifters</span>
+                </div>
+              </div>
+              {/* Decorative ring */}
+              <div className="absolute inset-[3%] rounded-full border border-dashed border-gold/20 animate-spin-slow" />
+            </div>
+          </div>
         </div>
 
         {/* Bottom gradient fade */}
