@@ -1,18 +1,30 @@
 import { NextResponse } from "next/server";
-import { createSupabaseAnonClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const next = searchParams.get("next") ?? "/account";
 
-  const supabase = createSupabaseAnonClient();
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
 
-  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin}/api/auth/callback?next=${encodeURIComponent(next)}`;
+  // Use anon client with implicit flow for OAuth
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        flowType: "implicit",
+      },
+    },
+  );
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo,
+      redirectTo: `${appUrl}/api/auth/callback?next=${encodeURIComponent(next)}`,
       queryParams: {
         access_type: "offline",
         prompt: "consent",
@@ -20,11 +32,12 @@ export async function GET(request: Request) {
     },
   });
 
-  if (error || !data.url)
-    return NextResponse.json(
-      { error: "Unable to initiate Google sign-in." },
-      { status: 500 },
+  if (error || !data.url) {
+    console.error("[google-oauth] Failed to initiate:", error);
+    return NextResponse.redirect(
+      new URL(`/login?error=auth_failed`, appUrl),
     );
+  }
 
   return NextResponse.redirect(data.url);
 }

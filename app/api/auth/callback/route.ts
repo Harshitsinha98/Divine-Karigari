@@ -1,44 +1,78 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import { setSessionCookie } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams, origin, hash } = new URL(request.url);
   const code = searchParams.get("code");
+  const accessToken = searchParams.get("access_token");
   const next = searchParams.get("next") ?? "/account";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? origin;
 
-  if (!code) {
-    const errorUrl = new URL("/login", origin);
-    errorUrl.searchParams.set("error", "missing_code");
-    return NextResponse.redirect(errorUrl);
+  // If no code and no access_token, this might be an implicit flow
+  // where tokens come as hash fragments (handled client-side)
+  if (!code && !accessToken) {
+    console.error("[auth-callback] No code or access_token received");
+    return NextResponse.redirect(
+      new URL(`/login?error=missing_code`, appUrl),
+    );
   }
 
   try {
-    const supabase = createSupabaseServerClient();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      },
+    );
 
-    // Exchange the code for a session
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.exchangeCodeForSession(code);
+    let email: string | undefined;
+    let name: string | undefined;
 
-    if (sessionError || !sessionData.user) {
-      const errorUrl = new URL("/login", origin);
-      errorUrl.searchParams.set("error", "auth_failed");
-      return NextResponse.redirect(errorUrl);
+    if (code) {
+      // PKCE flow: exchange code for session
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.exchangeCodeForSession(code);
+
+      if (sessionError || !sessionData.user) {
+        console.error("[auth-callback] Code exchange failed:", sessionError?.message);
+        return NextResponse.redirect(
+          new URL(`/login?error=auth_failed`, appUrl),
+        );
+      }
+
+      email = sessionData.user.email ?? sessionData.user.user_metadata?.email;
+      name =
+        sessionData.user.user_metadata?.full_name ??
+        sessionData.user.user_metadata?.name;
+    } else if (accessToken) {
+      // Implicit flow: use access token to get user
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser(accessToken);
+
+      if (userError || !userData.user) {
+        console.error("[auth-callback] Token validation failed:", userError?.message);
+        return NextResponse.redirect(
+          new URL(`/login?error=auth_failed`, appUrl),
+        );
+      }
+
+      email = userData.user.email ?? userData.user.user_metadata?.email;
+      name =
+        userData.user.user_metadata?.full_name ??
+        userData.user.user_metadata?.name;
     }
 
-    const supabaseUser = sessionData.user;
-    const email =
-      supabaseUser.email ??
-      supabaseUser.user_metadata?.email;
-    const name =
-      supabaseUser.user_metadata?.full_name ??
-      supabaseUser.user_metadata?.name;
-
     if (!email) {
-      const errorUrl = new URL("/login", origin);
-      errorUrl.searchParams.set("error", "no_email");
-      return NextResponse.redirect(errorUrl);
+      console.error("[auth-callback] No email from provider");
+      return NextResponse.redirect(
+        new URL(`/login?error=no_email`, appUrl),
+      );
     }
 
     // Find or create user in our database
@@ -58,7 +92,6 @@ export async function GET(request: Request) {
         },
       });
     } else if (!user.authProvider || user.authProvider === "email") {
-      // Link Google to existing email account
       await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -68,18 +101,18 @@ export async function GET(request: Request) {
       });
     }
 
-    // Create our app session (JWT cookie)
-    const redirectUrl = new URL(next, origin);
-    const response = NextResponse.redirect(redirectUrl);
+    // Create our app session (JWT cookie) and redirect
+    const response = NextResponse.redirect(new URL(next, appUrl));
     await setSessionCookie(response, {
       id: user.id,
       email: user.email,
       role: user.role,
     });
     return response;
-  } catch {
-    const errorUrl = new URL("/login", origin);
-    errorUrl.searchParams.set("error", "server_error");
-    return NextResponse.redirect(errorUrl);
+  } catch (err) {
+    console.error("[auth-callback] Unexpected error:", err);
+    return NextResponse.redirect(
+      new URL(`/login?error=server_error`, appUrl),
+    );
   }
 }
