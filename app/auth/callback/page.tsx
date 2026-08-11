@@ -4,8 +4,6 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
-export const dynamic = "force-dynamic";
-
 function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
