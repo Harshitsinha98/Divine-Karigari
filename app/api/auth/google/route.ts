@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -7,36 +6,21 @@ export async function GET(request: Request) {
 
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    },
-  );
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      // Supabase will redirect to its own /auth/v1/callback first,
-      // then redirect to our redirectTo URL with the access_token in hash
-      // OR with code if PKCE is enabled on Supabase side
-      redirectTo: `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`,
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
-    },
-  });
-
-  if (error || !data.url) {
-    console.error("[google-oauth] Failed to initiate:", error);
-    return NextResponse.redirect(new URL(`/login?error=auth_failed`, appUrl));
+  if (!supabaseUrl) {
+    console.error("[google-oauth] NEXT_PUBLIC_SUPABASE_URL is not set");
+    return NextResponse.redirect(new URL(`/login?error=server_error`, appUrl));
   }
 
-  return NextResponse.redirect(data.url);
+  // Manually construct the Supabase OAuth authorize URL.
+  // This is more reliable than signInWithOAuth() in a server context,
+  // which can produce a relative URL and redirect to the wrong domain.
+  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`;
+
+  const authorizeUrl = new URL(`${supabaseUrl}/auth/v1/authorize`);
+  authorizeUrl.searchParams.set("provider", "google");
+  authorizeUrl.searchParams.set("redirect_to", redirectTo);
+
+  return NextResponse.redirect(authorizeUrl.toString());
 }
