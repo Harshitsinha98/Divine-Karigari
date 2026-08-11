@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Heart,
@@ -10,79 +10,128 @@ import {
 } from "@/components/layout/Icons";
 import { SearchBar } from "@/components/layout/SearchBar";
 import { useCommerce } from "@/components/commerce/CommerceProvider";
+
 export function Header() {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { cartCount, setCartOpen } = useCommerce();
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const links = [
     ["Shop", "/shop"],
     ["Collections", "/collections"],
     ["Our story", "/about"],
   ];
+
   return (
-    <header className="relative z-40 border-b border-sand-line/80 bg-parchment/95">
-      <div className="container flex h-20 items-center justify-between gap-5">
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "border-b border-sand-line/50 bg-parchment/80 shadow-soft backdrop-blur-xl"
+          : "border-b border-sand-line/80 bg-parchment"
+      }`}
+    >
+      <div className="container flex h-[72px] items-center justify-between gap-5">
+        {/* Logo */}
         <Link
           href="/"
-          className="font-display text-2xl tracking-tight text-ink"
+          className="font-display text-2xl tracking-tight text-ink transition-transform duration-200 hover:scale-[1.02]"
         >
-          Divine <span className="text-gold">Karigari</span>
+          Divine <span className="text-gradient-gold">Karigari</span>
         </Link>
-        <nav className="hidden items-center gap-7 text-sm text-muted-ink md:flex">
+
+        {/* Desktop nav */}
+        <nav className="hidden items-center gap-1 md:flex">
           {links.map(([label, href]) => (
-            <Link key={href} className="hover:text-oxblood" href={href}>
+            <Link
+              key={href}
+              href={href}
+              className="relative rounded-full px-4 py-2 text-sm font-medium text-muted-ink transition-all duration-200 hover:bg-gold/5 hover:text-ink"
+            >
               {label}
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-1">
+
+        {/* Actions */}
+        <div className="flex items-center gap-0.5">
           <SearchBar />
           <Link
             href="/wishlist"
             aria-label="Wishlist"
-            className="hidden rounded-full p-2.5 hover:bg-sand-line/30 sm:block"
+            className="hidden rounded-full p-2.5 text-muted-ink transition-all duration-200 hover:bg-gold/5 hover:text-oxblood sm:block"
           >
             <Heart size={19} />
           </Link>
           <Link
             href="/account"
             aria-label="Account"
-            className="hidden rounded-full p-2.5 hover:bg-sand-line/30 sm:block"
+            className="hidden rounded-full p-2.5 text-muted-ink transition-all duration-200 hover:bg-gold/5 hover:text-ink sm:block"
           >
             <UserRound size={19} />
           </Link>
           <button
             aria-label="Cart"
             onClick={() => setCartOpen(true)}
-            className="relative rounded-full p-2.5 hover:bg-sand-line/30"
+            className="relative rounded-full p-2.5 text-muted-ink transition-all duration-200 hover:bg-gold/5 hover:text-ink"
           >
             <ShoppingBag size={19} />
-            <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-oxblood px-1 text-[10px] text-parchment">
-              {cartCount}
-            </span>
+            {cartCount > 0 && (
+              <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-gold px-1 text-[10px] font-medium text-parchment shadow-sm">
+                {cartCount}
+              </span>
+            )}
           </button>
           <button
             aria-label={open ? "Close menu" : "Open menu"}
             onClick={() => setOpen(!open)}
-            className="rounded-full p-2.5 hover:bg-sand-line/30 md:hidden"
+            className="rounded-full p-2.5 text-muted-ink transition-all duration-200 hover:bg-gold/5 hover:text-ink md:hidden"
           >
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
       </div>
+
+      {/* Mobile menu */}
       <div
-        className={`absolute inset-x-0 top-full border-b border-sand-line bg-parchment px-5 shadow-soft transition duration-300 md:hidden ${open ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0"}`}
+        className={`absolute inset-x-0 top-full border-b border-sand-line/50 bg-parchment/95 shadow-lift backdrop-blur-xl transition-all duration-300 md:hidden ${
+          open
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-2 opacity-0"
+        }`}
       >
-        <nav className="container grid gap-1 py-5 font-display text-lg">
+        <nav className="container grid gap-1 py-5">
           {links.map(([label, href]) => (
             <Link
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="border-b border-sand-line/70 py-4"
+              className="rounded-soft-lg px-4 py-3.5 font-display text-lg transition-all duration-200 hover:bg-gold/5"
             >
               {label}
             </Link>
           ))}
+          <div className="mt-3 flex gap-2 border-t border-sand-line/50 pt-4">
+            <Link
+              href="/wishlist"
+              onClick={() => setOpen(false)}
+              className="flex flex-1 items-center justify-center gap-2 rounded-soft border border-sand-line py-3 text-sm hover:border-gold hover:text-gold"
+            >
+              <Heart size={16} /> Wishlist
+            </Link>
+            <Link
+              href="/account"
+              onClick={() => setOpen(false)}
+              className="flex flex-1 items-center justify-center gap-2 rounded-soft border border-sand-line py-3 text-sm hover:border-gold hover:text-gold"
+            >
+              <UserRound size={16} /> Account
+            </Link>
+          </div>
         </nav>
       </div>
     </header>

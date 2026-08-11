@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
 
-  // Use anon client with implicit flow for OAuth
+  // Use anon client with PKCE flow — this sends a code to the callback
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
-        flowType: "implicit",
+        flowType: "pkce",
       },
     },
   );
@@ -25,10 +25,7 @@ export async function GET(request: Request) {
     provider: "google",
     options: {
       redirectTo: `${appUrl}/api/auth/callback?next=${encodeURIComponent(next)}`,
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
+      skipBrowserRedirect: false,
     },
   });
 

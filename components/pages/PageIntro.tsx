@@ -11,12 +11,13 @@ export function PageIntro({
   children?: ReactNode;
 }) {
   return (
-    <div className="border-b border-sand-line pb-12">
+    <div className="border-b border-sand-line/50 pb-12">
       <Reveal>
-        <p className="text-xs uppercase tracking-[0.24em] text-oxblood">
+        <span className="inline-flex items-center gap-2 rounded-full border border-oxblood/15 bg-oxblood/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-oxblood">
+          <span className="h-1 w-1 rounded-full bg-oxblood" />
           {eyebrow}
-        </p>
-        <h1 className="mt-4 max-w-3xl font-display text-5xl leading-tight sm:text-7xl">
+        </span>
+        <h1 className="mt-5 max-w-3xl font-display text-5xl leading-tight sm:text-7xl">
           {title}
         </h1>
         {children && (
