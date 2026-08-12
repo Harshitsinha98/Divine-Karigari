@@ -16,17 +16,39 @@ export function OrderActions({
   status,
   paymentStatus,
   total,
+  awb,
+  labelUrl,
 }: {
   id: string;
   status: string;
   paymentStatus: string;
   total: number;
+  awb?: string | null;
+  labelUrl?: string | null;
 }) {
   const [next, setNext] = useState(status);
   const [message, setMessage] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
   const [destination, setDestination] = useState("WALLET");
   const [reason, setReason] = useState("Customer refund");
+  const [busy, setBusy] = useState(false);
+
+  const quickStatus = async (target: string) => {
+    setBusy(true);
+    const response = await fetch(`/api/admin/orders/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: target }),
+    });
+    const result = await response.json();
+    setBusy(false);
+    setMessage(
+      response.ok
+        ? `Order marked ${target.replaceAll("_", " ").toLowerCase()}.`
+        : (result.error ?? "Update failed."),
+    );
+    if (response.ok) setNext(target);
+  };
   const update = async () => {
     const response = await fetch(`/api/admin/orders/${id}`, {
       method: "PUT",
@@ -96,6 +118,53 @@ export function OrderActions({
         >
           Re-sync Shiprocket
         </button>
+      </section>
+
+      {/* Fulfilment quick actions */}
+      <section className="rounded-soft-xl border border-sand-line bg-parchment p-5">
+        <h2 className="font-display text-2xl">Fulfilment</h2>
+        <p className="mt-1 text-xs text-muted-ink">
+          {awb
+            ? `AWB ${awb} assigned. Label auto-generates from Shiprocket.`
+            : "AWB not assigned yet. Use 'Re-sync Shiprocket' to generate it."}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <a
+            href={`/api/admin/orders/${id}/shipping-label`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-10 items-center rounded-soft border border-sand-line px-4 text-sm hover:border-gold hover:text-gold"
+          >
+            {labelUrl ? "Download Shiprocket label" : "Print label"}
+          </a>
+          <a
+            href={`/api/admin/orders/${id}/invoice`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-10 items-center rounded-soft border border-sand-line px-4 text-sm hover:border-gold hover:text-gold"
+          >
+            Print invoice
+          </a>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-sand-line pt-4">
+          <span className="w-full text-xs text-muted-ink">
+            Quick status update:
+          </span>
+          <button
+            disabled={busy}
+            onClick={() => quickStatus("OUT_FOR_DELIVERY")}
+            className="min-h-10 rounded-soft border border-sand-line px-4 text-sm hover:border-gold disabled:opacity-40"
+          >
+            Out for delivery
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => quickStatus("DELIVERED")}
+            className="min-h-10 rounded-soft bg-tulsi px-4 text-sm text-parchment disabled:opacity-40"
+          >
+            Mark delivered
+          </button>
+        </div>
       </section>
       <section className="rounded-soft-xl border border-sand-line bg-parchment p-5">
         <h2 className="font-display text-2xl">Refund</h2>

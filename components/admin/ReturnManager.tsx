@@ -7,8 +7,10 @@ type ReturnRequest = {
   status: string;
   reason: string;
   notes: string | null;
+  photos: string[];
   adminNotes: string | null;
   shiprocketReturnId: string | null;
+  returnAwb: string | null;
   createdAt: string;
   user: { name: string | null; email: string };
   order: {
@@ -97,6 +99,37 @@ export function ReturnManager() {
             {request.notes && (
               <p className="mt-1 text-sm text-muted-ink">{request.notes}</p>
             )}
+            {/* Customer-submitted photos */}
+            {request.photos && request.photos.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-ink">
+                  Customer photos ({request.photos.length})
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {request.photos.map((url, i) => (
+                    <a
+                      key={i}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="h-20 w-20 overflow-hidden rounded-soft border border-sand-line"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`Return evidence ${i + 1}`}
+                        className="h-full w-full object-cover transition hover:scale-105"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            {request.returnAwb && (
+              <p className="mt-2 text-xs text-tulsi">
+                Return AWB: {request.returnAwb}
+              </p>
+            )}
             <textarea
               className="mt-4 min-h-20 w-full rounded-soft border border-sand-line p-3 text-sm"
               placeholder="Internal decision notes"
@@ -134,6 +167,15 @@ export function ReturnManager() {
                 <span className="self-center text-xs text-tulsi">
                   Shiprocket return: {request.shiprocketReturnId}
                 </span>
+              )}
+              {(request.status === "COMPLETED" ||
+                request.status === "SHIPPED") && (
+                <Link
+                  href={`/admin/orders/${request.order.id}`}
+                  className="min-h-10 rounded-soft bg-gold px-4 text-sm text-parchment inline-flex items-center"
+                >
+                  Process refund &rarr;
+                </Link>
               )}
             </div>
           </article>

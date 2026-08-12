@@ -271,15 +271,26 @@ export async function createShiprocketOrderForOrder(orderId: string) {
     });
     const assignment = assigned.response?.data ?? assigned.data ?? assigned;
     const awb = assignment.awb_code ?? assignment.awb;
-    if (awb)
+    if (awb) {
       await prisma.order.update({
         where: { id: order.id },
         data: {
           awbTrackingNumber: String(awb),
           courierName:
             assignment.courier_name ?? assignment.courier_company_name ?? null,
+          status: "SHIPPED",
+          trackingEvents: {
+            create: {
+              status: "SHIPPED",
+              title: "Shipment ready",
+              description: `AWB ${awb} assigned via ${assignment.courier_name ?? "courier"}.`,
+            },
+          },
         },
       });
+      // Auto-generate shipping label + request pickup
+      await generateShiprocketLabelAndPickup(order.id, shipmentId);
+    }
   } catch (error) {
     await prisma.order.update({
       where: { id: orderId },
@@ -290,6 +301,93 @@ export async function createShiprocketOrderForOrder(orderId: string) {
             : "Shiprocket order creation failed.",
       },
     });
+  }
+}
+
+/**
+ * Generates the shipping label PDF and requests pickup for a shipment.
+ * Stores the label_url and manifest_url on the order.
+ * Safe to call multiple times — failures are non-fatal (logged only).
+ */
+export async function generateShiprocketLabelAndPickup(
+  orderId: string,
+  shipmentId: string,
+) {
+  // 1) Generate label
+  try {
+    const labelRes = await shiprocketFetch("/courier/generate/label", {
+      method: "POST",
+      body: JSON.stringify({ shipment_id: [Number(shipmentId)] }),
+    });
+    const labelUrl = labelRes.label_url ?? labelRes.data?.label_url ?? null;
+    if (labelUrl)
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { labelUrl: String(labelUrl) },
+      });
+  } catch (error) {
+    console.error("[shiprocket] Label generation failed:", error);
+  }
+
+  // 2) Request pickup (non-fatal)
+  try {
+    await shiprocketFetch("/courier/generate/pickup", {
+      method: "POST",
+      body: JSON.stringify({ shipment_id: [Number(shipmentId)] }),
+    });
+  } catch (error) {
+    console.error("[shiprocket] Pickup request failed:", error);
+  }
+
+  // 3) Generate manifest (non-fatal)
+  try {
+    const manifestRes = await shiprocketFetch("/manifests/generate", {
+      method: "POST",
+      body: JSON.stringify({ shipment_id: [Number(shipmentId)] }),
+    });
+    const manifestUrl =
+      manifestRes.manifest_url ?? manifestRes.data?.manifest_url ?? null;
+    if (manifestUrl)
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { manifestUrl: String(manifestUrl) },
+      });
+  } catch (error) {
+    console.error("[shiprocket] Manifest generation failed:", error);
+  }
+}
+
+/**
+ * Fetches live tracking data from Shiprocket for a given AWB.
+ * Returns the tracking activities array or null.
+ */
+export async function trackShiprocketAwb(awb: string) {
+  if (!configured()) return null;
+  try {
+    const data = await shiprocketFetch(`/courier/track/awb/${awb}`, {
+      method: "GET",
+    });
+    const tracking = data.tracking_data ?? data;
+    return {
+      currentStatus: tracking.shipment_track?.[0]?.current_status ?? null,
+      awb,
+      activities: (tracking.shipment_track_activities ?? []).map(
+        (a: {
+          date?: string;
+          activity?: string;
+          location?: string;
+          status?: string;
+        }) => ({
+          date: a.date ?? null,
+          activity: a.activity ?? null,
+          location: a.location ?? null,
+          status: a.status ?? null,
+        }),
+      ),
+    };
+  } catch (error) {
+    console.error("[shiprocket] Track AWB failed:", error);
+    return null;
   }
 }
 

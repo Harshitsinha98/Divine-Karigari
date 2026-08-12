@@ -304,6 +304,8 @@ model Order {
   shiprocketShipmentId  String?
   awbTrackingNumber     String?
   courierName           String?
+  labelUrl              String?
+  manifestUrl           String?
   estimatedDeliveryDate DateTime?
   shiprocketSyncError   String?
   deliveredAt           DateTime?

@@ -145,6 +145,8 @@ export default async function OrderDetailPage({
             status={order.status}
             paymentStatus={order.paymentStatus}
             total={Number(order.total)}
+            awb={order.awbTrackingNumber}
+            labelUrl={order.labelUrl}
           />
           <section className="rounded-soft-xl border border-sand-line bg-parchment p-5">
             <h2 className="font-display text-2xl">Customer & delivery</h2>

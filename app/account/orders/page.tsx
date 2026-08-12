@@ -14,7 +14,10 @@ export default async function OrdersPage() {
     <div>
       <AccountSection eyebrow="Your history" title="My orders">
         <p className="mt-4 text-sm leading-7 text-muted-ink">
-          Every meaningful delivery, in one place.
+          Every meaningful delivery, in one place.{" "}
+          <Link href="/track" className="text-oxblood hover:text-gold">
+            Track an order &rarr;
+          </Link>
         </p>
       </AccountSection>
       <div className="mt-10 grid gap-3">
