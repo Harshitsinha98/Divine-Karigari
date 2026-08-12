@@ -66,6 +66,7 @@ export default async function ProductPage({
     customizationEnabled: raw.customizationEnabled ?? false,
     customizationLabel: raw.customizationLabel,
     customizationMaxLength: raw.customizationMaxLength,
+    returnWindowDays: raw.returnWindowDays ?? null,
     category: { name: raw.category.name, slug: raw.category.slug },
     variants: raw.variants.map((variant) => ({
       id: variant.id,

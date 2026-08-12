@@ -110,6 +110,43 @@ export async function POST(request: Request) {
       awb: updated.awbTrackingNumber,
       courier: updated.courierName,
     });
+
+    // ── Handle return shipment tracking ──────────────────────────
+    // If this order has a return request, update its tracking too.
+    // Shiprocket sends return shipment updates with the same AWB/order reference.
+    const returnRequest = await prisma.returnRequest.findUnique({
+      where: { orderId: order.id },
+    });
+      if (returnRequest && (returnRequest.status === "APPROVED" || returnRequest.status === "SHIPPED")) {
+      const returnStatus = rawStatus.toLowerCase();
+      let newReturnStatus: "APPROVED" | "SHIPPED" | "COMPLETED" = returnRequest.status as "APPROVED" | "SHIPPED";
+      if (returnStatus.includes("pickup") || returnStatus.includes("ship") || returnStatus.includes("transit")) {
+        newReturnStatus = "SHIPPED";
+      } else if (returnStatus.includes("delivered") || returnStatus.includes("received")) {
+        newReturnStatus = "COMPLETED";
+      }
+      const returnAwb = payload.awb_code ?? payload.awb ?? returnRequest.returnAwb;
+      const returnCourier = payload.courier_name ?? payload.courier_company_name ?? returnRequest.returnCourier;
+
+      await prisma.returnRequest.update({
+        where: { id: returnRequest.id },
+        data: {
+          status: newReturnStatus as "SHIPPED" | "COMPLETED",
+          returnAwb: returnAwb ? String(returnAwb) : returnRequest.returnAwb,
+          returnCourier: returnCourier ? String(returnCourier) : returnRequest.returnCourier,
+          trackingEvents: {
+            create: {
+              status: newReturnStatus,
+              title: `Return: ${titleFor(rawStatus)}`,
+              description: payload.status_description ?? payload.activity ?? null,
+              location: payload.current_location ?? payload.location ?? null,
+              rawPayload: payload,
+            },
+          },
+        },
+      });
+    }
+
     return NextResponse.json({ received: true });
   } catch {
     return NextResponse.json(

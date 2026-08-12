@@ -37,6 +37,7 @@ export type ProductDetailData = {
   customizationEnabled: boolean;
   customizationLabel?: string | null;
   customizationMaxLength?: number | null;
+  returnWindowDays?: number | null;
   category: { name: string; slug: string };
   variants: Variant[];
   reviews: Review[];
@@ -111,6 +112,11 @@ export function ProductPurchase({ product }: { product: ProductDetailData }) {
               : "In stock"
             : "Sold out"}
         </Badge>
+        {product.returnWindowDays !== undefined && product.returnWindowDays !== null && product.returnWindowDays > 0 && (
+          <Badge className="border-gold/30 bg-gold/10 text-gold">
+            {product.returnWindowDays} days easy return
+          </Badge>
+        )}
       </div>
       <div className="mt-6 flex items-baseline gap-3">
         <span className="font-display text-3xl">
@@ -219,7 +225,9 @@ export function ProductPurchase({ product }: { product: ProductDetailData }) {
             {
               title: "Shipping & Returns",
               content:
-                "Free shipping on orders over ₹999. Personalized items are made to order and are generally not eligible for return unless they arrive damaged or incorrect.",
+                product.returnWindowDays !== undefined && product.returnWindowDays !== null
+                  ? `Free shipping on orders over ₹999. Easy returns within ${product.returnWindowDays} days of delivery. Personalized items are made to order and may have different return policies.`
+                  : "Free shipping on orders over ₹999. Easy returns within 7 days of delivery. Personalized items are made to order and are generally not eligible for return unless they arrive damaged or incorrect.",
             },
             {
               title: "Care Instructions",

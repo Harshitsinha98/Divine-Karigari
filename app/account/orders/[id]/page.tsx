@@ -8,7 +8,8 @@ import { ReorderButton } from "@/components/account/ReorderButton";
 import { StatusBadge } from "@/components/account/StatusBadge";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { RequestReturnButton } from "@/components/account/RequestReturnButton";
+import { ReturnFormWrapper } from "@/components/account/ReturnFormWrapper";
+import { ReturnTracking } from "@/components/account/ReturnTracking";
 const steps = [
   "PENDING",
   "CONFIRMED",
@@ -35,7 +36,7 @@ export default async function OrderDetailPage({
     include: {
       items: { include: { product: true } },
       trackingEvents: { orderBy: { happenedAt: "desc" } },
-      returnRequest: true,
+      returnRequest: { include: { trackingEvents: { orderBy: { happenedAt: "desc" } } } },
     },
   });
   if (!order) notFound();
@@ -43,7 +44,11 @@ export default async function OrderDetailPage({
     order.status === "PROCESSING"
       ? 1
       : Math.max(0, steps.indexOf(order.status));
-  const returnWindowDays = Number(process.env.RETURN_WINDOW_DAYS ?? 7);
+  const globalWindow = Number(process.env.RETURN_WINDOW_DAYS ?? 7);
+  const productWindows = order.items.map(
+    (item) => item.product.returnWindowDays ?? globalWindow,
+  );
+  const returnWindowDays = Math.min(...productWindows);
   const returnEligible =
     order.status === "DELIVERED" &&
     Date.now() <=
@@ -182,12 +187,29 @@ export default async function OrderDetailPage({
             Download invoice
           </a>
           {returnEligible && !order.returnRequest && (
-            <RequestReturnButton orderId={order.id} />
+            <ReturnFormWrapper orderId={order.id} />
           )}
           {order.returnRequest && (
-            <span className="inline-flex min-h-11 items-center rounded-soft border border-sand-line px-4 text-sm text-muted-ink">
-              Return request: {order.returnRequest.status.toLowerCase()}
-            </span>
+            <ReturnTracking
+              returnData={{
+                status: order.returnRequest.status,
+                reason: order.returnRequest.reason,
+                notes: order.returnRequest.notes,
+                photos: order.returnRequest.photos,
+                returnAwb: order.returnRequest.returnAwb,
+                returnCourier: order.returnRequest.returnCourier,
+                adminNotes: order.returnRequest.adminNotes,
+                createdAt: order.returnRequest.createdAt.toISOString(),
+                trackingEvents: order.returnRequest.trackingEvents.map((e) => ({
+                  id: e.id,
+                  status: e.status,
+                  title: e.title,
+                  description: e.description,
+                  location: e.location,
+                  happenedAt: e.happenedAt.toISOString(),
+                })),
+              }}
+            />
           )}
         </div>
       </AccountCard>

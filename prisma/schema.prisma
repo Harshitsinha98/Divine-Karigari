@@ -206,6 +206,7 @@ model Product {
   lengthCm               Decimal?         @db.Decimal(8, 2)
   widthCm                Decimal?         @db.Decimal(8, 2)
   heightCm               Decimal?         @db.Decimal(8, 2)
+  returnWindowDays       Int?             // Per-product return window (null = use global RETURN_WINDOW_DAYS)
   createdAt              DateTime         @default(now())
   updatedAt              DateTime         @updatedAt
   category               Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -346,18 +347,36 @@ model ReturnRequest {
   status             ReturnRequestStatus @default(REQUESTED)
   reason             String
   notes              String?
+  photos             String[]            @default([])
   adminNotes         String?
   reviewedAt         DateTime?
   reviewedById       String?
   shiprocketReturnId String?
+  returnAwb          String?
+  returnCourier      String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   order              Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviewedBy         Staff?              @relation("ReturnModerator", fields: [reviewedById], references: [id], onDelete: SetNull)
+  trackingEvents     ReturnTrackingEvent[]
 
   @@index([userId, status])
   @@index([reviewedById])
+}
+
+model ReturnTrackingEvent {
+  id              String        @id @default(cuid())
+  returnRequestId String
+  status          String
+  title           String
+  description     String?
+  location        String?
+  happenedAt      DateTime      @default(now())
+  rawPayload      Json?
+  returnRequest   ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+
+  @@index([returnRequestId, happenedAt])
 }
 
 model OrderItem {

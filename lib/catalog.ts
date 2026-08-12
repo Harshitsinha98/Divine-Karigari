@@ -231,6 +231,7 @@ export async function getProductBySlug(slug: string) {
     variants: [],
     reviews: [],
     stock: fallback.stock ?? 12,
+    returnWindowDays: null,
     customizationLabel: fallback.customizationEnabled ? "Your message" : null,
     customizationMaxLength: fallback.customizationEnabled ? 40 : null,
     category: fallback.category,
