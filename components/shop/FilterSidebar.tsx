@@ -57,11 +57,19 @@ export function FilterSidebar({
           className="mt-3 h-11 w-full rounded-soft border border-sand-line bg-parchment px-3 text-sm outline-none focus:border-gold"
         >
           <option value="">Any occasion</option>
-          <option value="birthdays">Birthdays</option>
-          <option value="weddings">Weddings</option>
-          <option value="festivals">Festivals</option>
-          <option value="housewarming">Housewarming</option>
-          <option value="rakhi">Rakhi</option>
+          <optgroup label="For">
+            <option value="for-her">Gifts for Her</option>
+            <option value="for-him">Gifts for Him</option>
+            <option value="for-couples">Gifts for Couples</option>
+            <option value="for-kids">Gifts for Kids</option>
+          </optgroup>
+          <optgroup label="Occasion">
+            <option value="birthdays">Birthdays</option>
+            <option value="weddings">Weddings</option>
+            <option value="festivals">Festivals</option>
+            <option value="housewarming">Housewarming</option>
+            <option value="rakhi">Rakhi</option>
+          </optgroup>
         </select>
       </div>
       <div>

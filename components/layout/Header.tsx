@@ -29,6 +29,37 @@ export function Header() {
     ["Our story", "/about"],
   ];
 
+  const giftMenu: { heading: string; items: [string, string][] }[] = [
+    {
+      heading: "By recipient",
+      items: [
+        ["Gifts for Her", "/shop?occasion=for-her"],
+        ["Gifts for Him", "/shop?occasion=for-him"],
+        ["Gifts for Couples", "/shop?occasion=for-couples"],
+        ["Gifts for Kids", "/shop?occasion=for-kids"],
+      ],
+    },
+    {
+      heading: "By occasion",
+      items: [
+        ["Birthdays", "/shop?occasion=birthdays"],
+        ["Weddings", "/shop?occasion=weddings"],
+        ["Anniversaries", "/shop?occasion=for-couples"],
+        ["Housewarming", "/shop?occasion=housewarming"],
+        ["Festivals & Rakhi", "/shop?occasion=festivals"],
+      ],
+    },
+    {
+      heading: "By category",
+      items: [
+        ["Personalized Gifts", "/shop?category=personalized-gifts"],
+        ["Home & Decor", "/shop?category=home-decor"],
+        ["Jewelry & Accessories", "/shop?category=jewelry-accessories"],
+        ["Rakhi & Festive", "/shop?category=rakhi-festive"],
+      ],
+    },
+  ];
+
   return (
     <header
       className={`sticky top-0 z-50 transition-all duration-300 ${
@@ -55,6 +86,36 @@ export function Header() {
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-1 md:flex">
+          {/* Gifts mega-menu */}
+          <div className="group relative">
+            <button className="flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium text-muted-ink transition-all duration-200 hover:bg-gold/5 hover:text-ink">
+              Gifts
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform duration-200 group-hover:rotate-180"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            {/* Dropdown */}
+            <div className="pointer-events-none absolute left-0 top-full pt-3 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+              <div className="grid w-[560px] grid-cols-3 gap-6 rounded-soft-2xl border border-sand-line bg-warm-white p-6 shadow-lift-lg">
+                {giftMenu.map((col) => (
+                  <div key={col.heading}>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-gold">
+                      {col.heading}
+                    </p>
+                    <div className="grid gap-2">
+                      {col.items.map(([label, href]) => (
+                        <Link
+                          key={label + href}
+                          href={href}
+                          className="text-sm text-muted-ink transition-colors hover:text-oxblood"
+                        >
+                          {label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
           {links.map(([label, href]) => (
             <Link
               key={href}
@@ -124,6 +185,31 @@ export function Header() {
               {label}
             </Link>
           ))}
+          {/* Gift categories on mobile */}
+          <div className="mt-2 border-t border-sand-line/50 pt-3">
+            <p className="px-4 pb-2 text-xs font-semibold uppercase tracking-[0.16em] text-gold">
+              Shop gifts
+            </p>
+            <div className="grid grid-cols-2 gap-1">
+              {[
+                ["Gifts for Her", "/shop?occasion=for-her"],
+                ["Gifts for Him", "/shop?occasion=for-him"],
+                ["For Couples", "/shop?occasion=for-couples"],
+                ["For Kids", "/shop?occasion=for-kids"],
+                ["Personalized", "/shop?category=personalized-gifts"],
+                ["Home & Decor", "/shop?category=home-decor"],
+              ].map(([label, href]) => (
+                <Link
+                  key={label}
+                  href={href}
+                  onClick={() => setOpen(false)}
+                  className="rounded-soft px-4 py-2.5 text-sm text-muted-ink transition hover:bg-gold/5 hover:text-ink"
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </div>
           <div className="mt-3 flex gap-2 border-t border-sand-line/50 pt-4">
             <Link
               href="/wishlist"

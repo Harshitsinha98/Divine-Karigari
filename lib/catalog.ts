@@ -86,7 +86,7 @@ export async function getHomepageProducts() {
       where: { status: "ACTIVE" },
       include: { category: true },
       orderBy: { createdAt: "desc" },
-      take: 8,
+      take: 12,
     });
     if (!products.length) return fallbackProducts;
     return products.map((product) => ({
