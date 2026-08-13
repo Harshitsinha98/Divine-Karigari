@@ -8,6 +8,7 @@ const webhookPaths = new Set([
   "/api/checkout/webhook",
   "/api/shiprocket/webhook",
   "/api/shipping/webhook",
+  "/api/webhooks/shipment",
 ]);
 
 function csrfAllowed(request: NextRequest) {
