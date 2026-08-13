@@ -1,5 +1,6 @@
 import { AccountSection } from "@/components/account/AccountSection";
 import { ProfileManager } from "@/components/account/ProfileManager";
+import { VerificationManager } from "@/components/account/VerificationManager";
 export default function ProfilePage() {
   return (
     <div>
@@ -8,7 +9,8 @@ export default function ProfilePage() {
           Keep your details and preferences up to date.
         </p>
       </AccountSection>
-      <div className="mt-10">
+      <div className="mt-10 grid gap-6">
+        <VerificationManager />
         <ProfileManager />
       </div>
     </div>

@@ -45,10 +45,16 @@ export async function POST(request: Request) {
           phone: normalizedPhone,
           email: `${normalizedPhone.replace("+", "")}@phone.divine-karigari.in`,
           authProvider: "firebase-otp",
+          phoneVerified: true,
           wallet: { create: {} },
           cart: { create: {} },
           wishlist: { create: {} },
         },
+      });
+    } else if (!user.phoneVerified) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { phoneVerified: true },
       });
     }
 

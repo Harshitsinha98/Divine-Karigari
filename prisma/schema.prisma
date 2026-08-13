@@ -84,6 +84,8 @@ model User {
   phone                   String?              @unique
   passwordHash            String?
   authProvider            String?              @default("email")
+  emailVerified           Boolean              @default(false)
+  phoneVerified           Boolean              @default(false)
   role                    UserRole             @default(CUSTOMER)
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @updatedAt
@@ -112,6 +114,18 @@ model PasswordResetToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+}
+
+model EmailOtp {
+  id        String   @id @default(cuid())
+  userId    String
+  email     String
+  codeHash  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([email])
 }
 
 model SavedPaymentMethod {

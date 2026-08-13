@@ -65,16 +65,17 @@ export async function POST(request: Request) {
           email: email.toLowerCase(),
           name,
           authProvider: "google",
+          emailVerified: true,
           wallet: { create: {} },
           cart: { create: {} },
           wishlist: { create: {} },
         },
       });
-    } else if (!user.authProvider || user.authProvider === "email") {
+    } else if (!user.emailVerified) {
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
-          authProvider: "google",
+          emailVerified: true,
           name: user.name ?? name,
         },
       });

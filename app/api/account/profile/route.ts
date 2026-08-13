@@ -33,6 +33,9 @@ export async function GET() {
       name: true,
       email: true,
       phone: true,
+      authProvider: true,
+      emailVerified: true,
+      phoneVerified: true,
       notificationPreferences: true,
     },
   });

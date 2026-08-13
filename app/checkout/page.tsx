@@ -64,6 +64,15 @@ export default function CheckoutPage() {
     estimatedDeliveryDate: string | null;
   } | null>(null);
   const [checkingServiceability, setCheckingServiceability] = useState(false);
+  // Buyer (account) contact — email + phone stay constant regardless of address
+  const [buyer, setBuyer] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+  }>({ name: "", email: "", phone: "" });
+  // Gift recipient option
+  const [giftToSomeoneElse, setGiftToSomeoneElse] = useState(false);
+  const [recipient, setRecipient] = useState({ name: "", phone: "" });
   const checkoutTracked = useRef(false);
   const shipping = subtotal >= 999 ? 0 : 99;
   const tax = Math.round(subtotal * 0.05 * 100) / 100;
@@ -87,8 +96,36 @@ export default function CheckoutPage() {
       }
     });
   }, [router]);
+  // Load buyer's account contact details (email + phone stay constant)
+  useEffect(() => {
+    void fetch("/api/account/profile").then(async (response) => {
+      if (response.ok) {
+        const data = (await response.json()).data;
+        if (data)
+          setBuyer({
+            name: data.name ?? "",
+            email: data.email ?? "",
+            phone: data.phone ?? "",
+          });
+      }
+    });
+  }, []);
+
   const address = addresses.find((item) => item.id === selectedAddress);
-  const currentAddress = address ?? (addingAddress ? newAddress : null);
+  const baseAddress = address ?? (addingAddress ? newAddress : null);
+  // Effective shipping address: recipient name/phone comes from the gift
+  // recipient if chosen, otherwise the buyer's own account details.
+  const currentAddress = baseAddress
+    ? {
+        ...baseAddress,
+        recipientName: giftToSomeoneElse
+          ? recipient.name
+          : buyer.name || baseAddress.recipientName,
+        phone: giftToSomeoneElse
+          ? recipient.phone
+          : buyer.phone || baseAddress.phone,
+      }
+    : null;
   const deliveryPincode = currentAddress?.postalCode;
   useEffect(() => {
     if (!deliveryPincode || deliveryPincode.length < 3 || !cart.length) {
@@ -397,6 +434,66 @@ export default function CheckoutPage() {
                     </div>
                   )}
                 </div>
+                {/* Recipient details */}
+                <div className="mt-6 rounded-soft-xl border border-sand-line bg-warm-white p-5">
+                  <h3 className="font-display text-lg">Who is receiving this?</h3>
+                  {/* Buyer contact (constant) */}
+                  <div className="mt-3 rounded-soft border border-sand-line/70 bg-parchment/50 p-3 text-sm">
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted-ink">
+                      Your contact (for order updates)
+                    </p>
+                    <p className="mt-1 font-medium text-ink">
+                      {buyer.email || "—"}
+                    </p>
+                    {buyer.phone && (
+                      <p className="text-muted-ink">{buyer.phone}</p>
+                    )}
+                  </div>
+
+                  <label className="mt-4 flex items-center gap-2.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={giftToSomeoneElse}
+                      onChange={(e) => setGiftToSomeoneElse(e.target.checked)}
+                      className="h-4 w-4 accent-gold"
+                    />
+                    This is a gift — deliver to someone else
+                  </label>
+
+                  {giftToSomeoneElse && (
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <Input
+                        required
+                        placeholder="Recipient's name"
+                        value={recipient.name}
+                        onChange={(e) =>
+                          setRecipient({ ...recipient, name: e.target.value })
+                        }
+                      />
+                      <div className="flex items-stretch overflow-hidden rounded-soft border border-sand-line bg-parchment transition focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/20">
+                        <span className="flex items-center border-r border-sand-line bg-sand-line/20 px-3 text-sm">
+                          +91
+                        </span>
+                        <input
+                          required
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={10}
+                          placeholder="Recipient's mobile"
+                          value={recipient.phone.replace(/^\+91/, "")}
+                          onChange={(e) =>
+                            setRecipient({
+                              ...recipient,
+                              phone: `+91${e.target.value.replace(/\D/g, "").slice(0, 10)}`,
+                            })
+                          }
+                          className="h-11 flex-1 bg-transparent px-3 text-sm outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {checkingServiceability && (
                   <p className="mt-4 text-sm text-muted-ink">
                     Checking delivery availability…

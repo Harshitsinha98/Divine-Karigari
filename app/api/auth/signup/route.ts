@@ -51,6 +51,8 @@ export async function POST(request: Request) {
         email: input.email.toLowerCase(),
         phone: input.phone,
         passwordHash: await hashPassword(input.password),
+        authProvider: "email",
+        emailVerified: true,
         wallet: { create: {} },
         cart: { create: {} },
         wishlist: { create: {} },
