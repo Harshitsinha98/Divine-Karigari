@@ -151,12 +151,11 @@ export default function CheckoutPage() {
       .finally(() => setCheckingServiceability(false));
   }, [deliveryPincode, cart]);
   const canContinue = Boolean(
-    currentAddress?.recipientName &&
-    currentAddress.phone &&
-    currentAddress.line1 &&
+    currentAddress?.line1 &&
     currentAddress.city &&
     currentAddress.state &&
-    currentAddress.postalCode,
+    currentAddress.postalCode &&
+    (giftToSomeoneElse ? recipient.name && recipient.phone.length >= 13 : buyer.name),
   );
   const startPayment = async () => {
     if (!currentAddress || !cart.length || serviceability?.available === false)
@@ -330,29 +329,6 @@ export default function CheckoutPage() {
                       <div className="grid gap-4 sm:grid-cols-2">
                         <Input
                           required
-                          placeholder="Recipient name"
-                          value={newAddress.recipientName}
-                          onChange={(e) =>
-                            setNewAddress({
-                              ...newAddress,
-                              recipientName: e.target.value,
-                            })
-                          }
-                        />
-                        <Input
-                          required
-                          placeholder="Phone (+91)"
-                          type="tel"
-                          value={newAddress.phone}
-                          onChange={(e) =>
-                            setNewAddress({
-                              ...newAddress,
-                              phone: e.target.value,
-                            })
-                          }
-                        />
-                        <Input
-                          required
                           className="sm:col-span-2"
                           placeholder="House/Flat no., Building, Street"
                           value={newAddress.line1}
@@ -437,59 +413,63 @@ export default function CheckoutPage() {
                 {/* Recipient details */}
                 <div className="mt-6 rounded-soft-xl border border-sand-line bg-warm-white p-5">
                   <h3 className="font-display text-lg">Who is receiving this?</h3>
-                  {/* Buyer contact (constant) */}
-                  <div className="mt-3 rounded-soft border border-sand-line/70 bg-parchment/50 p-3 text-sm">
-                    <p className="text-xs uppercase tracking-[0.14em] text-muted-ink">
-                      Your contact (for order updates)
-                    </p>
-                    <p className="mt-1 font-medium text-ink">
-                      {buyer.email || "—"}
-                    </p>
-                    {buyer.phone && (
-                      <p className="text-muted-ink">{buyer.phone}</p>
-                    )}
-                  </div>
 
+                  {/* "Same as me" toggle */}
                   <label className="mt-4 flex items-center gap-2.5 text-sm">
                     <input
                       type="checkbox"
-                      checked={giftToSomeoneElse}
-                      onChange={(e) => setGiftToSomeoneElse(e.target.checked)}
+                      checked={!giftToSomeoneElse}
+                      onChange={(e) => setGiftToSomeoneElse(!e.target.checked)}
                       className="h-4 w-4 accent-gold"
                     />
-                    This is a gift — deliver to someone else
+                    <span>
+                      Deliver to me
+                      {buyer.name && (
+                        <span className="ml-1 text-muted-ink">
+                          ({buyer.name}{buyer.phone ? `, ${buyer.phone}` : ""})
+                        </span>
+                      )}
+                    </span>
                   </label>
 
                   {giftToSomeoneElse && (
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <Input
-                        required
-                        placeholder="Recipient's name"
-                        value={recipient.name}
-                        onChange={(e) =>
-                          setRecipient({ ...recipient, name: e.target.value })
-                        }
-                      />
-                      <div className="flex items-stretch overflow-hidden rounded-soft border border-sand-line bg-parchment transition focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/20">
-                        <span className="flex items-center border-r border-sand-line bg-sand-line/20 px-3 text-sm">
-                          +91
-                        </span>
-                        <input
+                    <div className="mt-4 rounded-soft border border-gold/20 bg-gold/5 p-4">
+                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-gold">
+                        Gift recipient
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <Input
                           required
-                          type="tel"
-                          inputMode="numeric"
-                          maxLength={10}
-                          placeholder="Recipient's mobile"
-                          value={recipient.phone.replace(/^\+91/, "")}
+                          placeholder="Recipient's full name"
+                          value={recipient.name}
                           onChange={(e) =>
-                            setRecipient({
-                              ...recipient,
-                              phone: `+91${e.target.value.replace(/\D/g, "").slice(0, 10)}`,
-                            })
+                            setRecipient({ ...recipient, name: e.target.value })
                           }
-                          className="h-11 flex-1 bg-transparent px-3 text-sm outline-none"
                         />
+                        <div className="flex items-stretch overflow-hidden rounded-soft border border-sand-line bg-parchment transition focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/20">
+                          <span className="flex items-center border-r border-sand-line bg-sand-line/20 px-3 text-sm">
+                            +91
+                          </span>
+                          <input
+                            required
+                            type="tel"
+                            inputMode="numeric"
+                            maxLength={10}
+                            placeholder="Recipient's mobile"
+                            value={recipient.phone.replace(/^\+91/, "")}
+                            onChange={(e) =>
+                              setRecipient({
+                                ...recipient,
+                                phone: `+91${e.target.value.replace(/\D/g, "").slice(0, 10)}`,
+                              })
+                            }
+                            className="h-11 flex-1 bg-transparent px-3 text-sm outline-none"
+                          />
+                        </div>
                       </div>
+                      <p className="mt-2 text-xs text-muted-ink">
+                        Courier updates will be sent to the recipient&apos;s number.
+                      </p>
                     </div>
                   )}
                 </div>
