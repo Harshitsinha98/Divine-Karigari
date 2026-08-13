@@ -116,17 +116,35 @@ export async function POST(request: Request) {
         throw new Error(`${product.name} does not have enough stock.`);
       return { ...item, product, variant, unitPrice };
     });
-    const serviceability = await checkShiprocketServiceability(
-      input.shippingAddress.postalCode,
-      lineItems.map((item) => ({
-        product: item.product,
-        quantity: item.quantity,
-      })),
-    );
-    if (serviceability && !serviceability.available)
-      throw new Error(
-        "This pincode is currently not serviceable for the items in your bag.",
+    // Serviceability check is best-effort — never block an order if
+    // Shiprocket is down or auth fails. AWB is assigned after payment
+    // and can be retried from the admin panel.
+    let serviceability: Awaited<
+      ReturnType<typeof checkShiprocketServiceability>
+    > = null;
+    try {
+      serviceability = await checkShiprocketServiceability(
+        input.shippingAddress.postalCode,
+        lineItems.map((item) => ({
+          product: item.product,
+          quantity: item.quantity,
+        })),
       );
+      if (serviceability && !serviceability.available)
+        throw new Error(
+          "This pincode is currently not serviceable for the items in your bag.",
+        );
+    } catch (error) {
+      // Only surface a genuine "not serviceable" message; swallow auth/network errors
+      if (
+        error instanceof Error &&
+        error.message.includes("not serviceable")
+      ) {
+        throw error;
+      }
+      console.error("[create-order] Serviceability check skipped:", error);
+      serviceability = null;
+    }
     const subtotal = lineItems.reduce(
       (sum, item) => sum + item.unitPrice * item.quantity,
       0,
