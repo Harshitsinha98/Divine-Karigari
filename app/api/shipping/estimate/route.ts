@@ -63,14 +63,21 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unable to check delivery for this pincode.",
+    // If Shiprocket auth/network fails, show a graceful fallback
+    // estimate instead of an error to the customer.
+    console.error("[shipping/estimate] Shiprocket error:", error);
+    const fallbackDays = 5;
+    const fallbackDate = new Date();
+    fallbackDate.setDate(fallbackDate.getDate() + fallbackDays);
+    return NextResponse.json({
+      data: {
+        available: true,
+        estimatedDays: fallbackDays,
+        courierName: null,
+        rate: null,
+        estimatedDeliveryDate: fallbackDate,
+        unconfigured: true,
       },
-      { status: 502 },
-    );
+    });
   }
 }
