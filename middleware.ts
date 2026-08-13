@@ -7,6 +7,7 @@ const ADMIN_SESSION_COOKIE = "divine_admin_session";
 const webhookPaths = new Set([
   "/api/checkout/webhook",
   "/api/shiprocket/webhook",
+  "/api/shipping/webhook",
 ]);
 
 function csrfAllowed(request: NextRequest) {
