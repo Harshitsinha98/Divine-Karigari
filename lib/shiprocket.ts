@@ -21,20 +21,51 @@ const addressOf = (value: unknown) => value as AddressSnapshot;
 const number = (value: unknown, fallback: number) =>
   value === null || value === undefined ? fallback : Number(value);
 
+// Cache the token in memory (valid ~10 days) to avoid hammering /auth/login
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
 async function getToken() {
   if (!configured()) throw new Error("Shiprocket is not configured.");
+
+  // Return cached token if still valid
+  if (cachedToken && cachedToken.expiresAt > Date.now()) {
+    return cachedToken.token;
+  }
+
+  // Trim to remove any accidental whitespace/newlines from env vars
+  const email = (process.env.SHIPROCKET_EMAIL ?? "").trim();
+  const password = (process.env.SHIPROCKET_PASSWORD ?? "").trim();
+
   const response = await fetch(`${baseUrl}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: process.env.SHIPROCKET_EMAIL,
-      password: process.env.SHIPROCKET_PASSWORD,
-    }),
+    body: JSON.stringify({ email, password }),
   });
-  if (!response.ok) throw new Error("Shiprocket authentication failed.");
-  const data = await response.json();
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    // Log the actual Shiprocket response for debugging
+    console.error("[shiprocket] Auth failed:", {
+      status: response.status,
+      message: data?.message,
+      emailUsed: email,
+      emailLength: email.length,
+      passwordLength: password.length,
+    });
+    throw new Error(
+      `Shiprocket authentication failed: ${data?.message ?? response.status}`,
+    );
+  }
+
   if (!data.token)
     throw new Error("Shiprocket did not return an access token.");
+
+  // Cache for 9 days
+  cachedToken = {
+    token: data.token as string,
+    expiresAt: Date.now() + 9 * 24 * 60 * 60 * 1000,
+  };
   return data.token as string;
 }
 
