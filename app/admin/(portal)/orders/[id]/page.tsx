@@ -137,6 +137,17 @@ export default async function OrderDetailPage({
                 {order.courierName && ` · ${order.courierName}`}
               </p>
             )}
+            {order.shiprocketSyncError &&
+              order.shiprocketSyncError !== "Shiprocket sync in progress" && (
+                <div className="mt-4 rounded-soft border border-oxblood/20 bg-oxblood/5 p-3 text-sm text-oxblood">
+                  <p className="font-medium">Shiprocket sync issue</p>
+                  <p className="mt-1 text-xs">{order.shiprocketSyncError}</p>
+                  <p className="mt-2 text-xs text-muted-ink">
+                    Fix the cause, then click &ldquo;Re-sync Shiprocket&rdquo;
+                    in Order actions.
+                  </p>
+                </div>
+              )}
           </section>
         </div>
         <div className="space-y-6">

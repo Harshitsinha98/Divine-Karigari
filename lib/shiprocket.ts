@@ -268,18 +268,35 @@ export async function createShiprocketOrderForOrder(orderId: string) {
       height: metrics.height,
       weight: metrics.weightKg,
     };
+    // Normalize phone to 10 digits (Shiprocket requires a valid Indian mobile)
+    const cleanPhone = String(address.phone ?? "")
+      .replace(/\D/g, "")
+      .replace(/^91/, "")
+      .slice(-10);
+    payload.billing_phone = cleanPhone;
+
     const created = await shiprocketFetch("/orders/create/adhoc", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    console.log(
+      "[shiprocket] adhoc create response:",
+      JSON.stringify(created).slice(0, 500),
+    );
     const shiprocketOrderId = String(
       created.order_id ?? created.data?.order_id ?? "",
     );
     const shipmentId = String(
       created.shipment_id ?? created.data?.shipment_id ?? "",
     );
-    if (!shiprocketOrderId || !shipmentId)
-      throw new Error("Shiprocket did not return an order or shipment ID.");
+    if (!shiprocketOrderId || !shipmentId) {
+      // Surface the real reason from Shiprocket (e.g. "Wrong Pickup location entered")
+      const reason =
+        created.message ??
+        (created.errors ? JSON.stringify(created.errors) : null) ??
+        "Shiprocket did not return an order or shipment ID. Check that your pickup location nickname matches SHIPROCKET_PICKUP_LOCATION exactly.";
+      throw new Error(String(reason));
+    }
     await prisma.order.update({
       where: { id: order.id },
       data: {

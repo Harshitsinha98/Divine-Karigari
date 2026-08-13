@@ -18,15 +18,28 @@ export function OrderManager() {
   const [paymentStatus, setPaymentStatus] = useState("");
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ pages: 1, total: 0 });
+  const [loadError, setLoadError] = useState("");
   useEffect(() => {
+    setLoadError("");
     fetch(
       `/api/admin/orders?q=${encodeURIComponent(q)}&status=${status}&paymentStatus=${paymentStatus}&page=${page}`,
     )
-      .then((res) => res.json())
-      .then((res) => {
-        setOrders(res.data ?? []);
-        setMeta(res.meta ?? { pages: 1, total: 0 });
-      });
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (res.status === 401)
+            setLoadError(
+              "Your admin session has expired. Please sign in again at /admin/login.",
+            );
+          else
+            setLoadError(body.error ?? `Failed to load orders (${res.status}).`);
+          setOrders([]);
+          return;
+        }
+        setOrders(body.data ?? []);
+        setMeta(body.meta ?? { pages: 1, total: 0 });
+      })
+      .catch(() => setLoadError("Network error while loading orders."));
   }, [q, status, paymentStatus, page]);
   return (
     <div>
@@ -133,8 +146,11 @@ export function OrderManager() {
             ))}
             {!orders.length && (
               <tr>
-                <td className="p-8 text-center text-muted-ink" colSpan={7}>
-                  No orders found.
+                <td
+                  className={`p-8 text-center ${loadError ? "text-oxblood" : "text-muted-ink"}`}
+                  colSpan={7}
+                >
+                  {loadError || "No orders found."}
                 </td>
               </tr>
             )}
