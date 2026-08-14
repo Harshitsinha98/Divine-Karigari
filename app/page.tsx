@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { RangoliMotif } from "@/components/ui/RangoliMotif";
 import {
@@ -12,12 +13,14 @@ import {
 } from "@/components/home/HeroIntro";
 import { CategoryGrid } from "@/components/home/CategoryGrid";
 import { ProductCarousel } from "@/components/home/ProductCarousel";
+import { ProductRail } from "@/components/home/ProductRail";
+import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { TestimonialsCarousel } from "@/components/home/TestimonialsCarousel";
 import { SocialProofGrid } from "@/components/home/SocialProofGrid";
 import { NewsletterForm } from "@/components/home/NewsletterForm";
 import { Reveal } from "@/components/motion/Reveal";
 import { ParallaxSection, FloatingDecor } from "@/components/motion/ParallaxSection";
-import { getHomepageProducts } from "@/lib/catalog";
+import { getHomepageProducts, getListingProducts } from "@/lib/catalog";
 import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +31,26 @@ export const metadata = pageMetadata(
 );
 
 export default async function Home() {
-  const products = await getHomepageProducts();
+  const [newArrivals, bestsellersResult, rakhiResult, personalizedResult] =
+    await Promise.all([
+      getHomepageProducts(),
+      getListingProducts({ sort: "popularity" }),
+      getListingProducts({ category: "rakhi-festive" }),
+      getListingProducts({ category: "personalized-gifts" }),
+    ]);
+
+  const bestsellers = bestsellersResult.products;
+  const personalized = personalizedResult.products;
+
+  // Rakhi/festive: prefer the seeded category, then the occasion tag,
+  // then gracefully fall back to newest arrivals so the section is never empty.
+  let rakhiProducts = rakhiResult.products;
+  if (!rakhiProducts.length) {
+    rakhiProducts = (await getListingProducts({ occasion: "festivals" }))
+      .products;
+  }
+  if (!rakhiProducts.length) rakhiProducts = newArrivals.slice(0, 8);
+
   return (
     <main className="overflow-hidden">
       {/* ═══════════════════════════════════════════════
@@ -152,6 +174,15 @@ export default async function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════
+          PROMO CAROUSEL — Auto-rotating festive/offer banners
+      ═══════════════════════════════════════════════ */}
+      <section className="container pt-2 sm:pt-4">
+        <Reveal>
+          <PromoCarousel />
+        </Reveal>
+      </section>
+
+      {/* ═══════════════════════════════════════════════
           CATEGORY GRID — With modern section header
       ═══════════════════════════════════════════════ */}
       <section className="relative container py-24 sm:py-32">
@@ -189,6 +220,68 @@ export default async function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════
+          NEW ARRIVALS — Product rail
+      ═══════════════════════════════════════════════ */}
+      <section className="container pb-4 pt-4 sm:pb-8">
+        <ProductRail
+          eyebrow="Just in"
+          accent="gold"
+          title={
+            <>
+              New <span className="text-gradient-gold">arrivals.</span>
+            </>
+          }
+          description="The latest handcrafted pieces from our artisan partners, freshly added."
+          viewAllHref="/shop"
+          viewAllLabel="View all"
+          products={newArrivals}
+        />
+      </section>
+
+      {/* ═══════════════════════════════════════════════
+          FESTIVE RAKHI COLLECTION — Special limited section
+      ═══════════════════════════════════════════════ */}
+      <section className="relative overflow-hidden border-y border-gold/20">
+        <div className="absolute inset-0 bg-gradient-to-br from-oxblood/10 via-parchment to-gold/10" />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gradient-radial from-gold/20 to-transparent blur-3xl" />
+        <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-gradient-radial from-oxblood/10 to-transparent blur-3xl" />
+
+        <div className="container relative py-24 sm:py-32">
+          <Reveal>
+            <div className="mb-12 flex flex-col items-start gap-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <span className="inline-flex items-center gap-2 rounded-full border border-oxblood/25 bg-oxblood/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-oxblood">
+                  <Sparkles size={12} />
+                  Raksha Bandhan &middot; Limited edition
+                </span>
+                <h2 className="mt-5 font-display text-4xl leading-tight sm:text-5xl lg:text-6xl">
+                  The Rakhi{" "}
+                  <span className="text-gradient-gold">collection.</span>
+                </h2>
+                <p className="mt-3 max-w-lg text-base text-muted-ink">
+                  Handcrafted rakhis, thoughtful hampers, and personalized
+                  keepsakes — for the bond that keeps growing. Order early to
+                  gift on time.
+                </p>
+              </div>
+              <Link
+                href="/shop?category=rakhi-festive"
+                className="group inline-flex items-center gap-2 rounded-full bg-oxblood px-6 py-3 text-sm font-medium text-parchment transition-all duration-300 hover:bg-oxblood/90 hover:shadow-lift"
+              >
+                Shop all Rakhi
+                <span className="transition-transform duration-300 group-hover:translate-x-0.5">
+                  &rarr;
+                </span>
+              </Link>
+            </div>
+          </Reveal>
+          <Reveal delay={0.15}>
+            <ProductCarousel products={rakhiProducts} />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════
           BESTSELLERS CAROUSEL — With gradient divider
       ═══════════════════════════════════════════════ */}
       <section className="relative border-y border-sand-line/50">
@@ -223,9 +316,28 @@ export default async function Home() {
             </div>
           </Reveal>
           <Reveal delay={0.15}>
-            <ProductCarousel products={products} />
+            <ProductCarousel products={bestsellers} />
           </Reveal>
         </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════
+          PERSONALIZED PICKS — Product rail
+      ═══════════════════════════════════════════════ */}
+      <section className="container py-24 sm:py-32">
+        <ProductRail
+          eyebrow="Make it personal"
+          accent="tulsi"
+          title={
+            <>
+              Personalized <span className="text-gradient-gold">picks.</span>
+            </>
+          }
+          description="Add a name, a date, or a message — gifts made to feel one of a kind."
+          viewAllHref="/shop?category=personalized-gifts"
+          viewAllLabel="Shop personalized"
+          products={personalized}
+        />
       </section>
 
       {/* ═══════════════════════════════════════════════
