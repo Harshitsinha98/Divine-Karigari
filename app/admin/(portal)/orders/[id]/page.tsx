@@ -59,6 +59,16 @@ export default async function OrderDetailPage({
           >
             Shipping label
           </a>
+          {order.awbTrackingNumber && order.shiprocketShipmentId && (
+            <a
+              target="_blank"
+              rel="noreferrer"
+              href={`/api/admin/orders/${order.id}/manifest`}
+              className="rounded-soft border border-sand-line px-3 py-2 text-sm"
+            >
+              {order.manifestUrl ? "Shiprocket manifest" : "Generate manifest"}
+            </a>
+          )}
         </div>
       </div>
       <div className="mt-7 grid gap-6 xl:grid-cols-[1.3fr_380px]">
@@ -158,6 +168,8 @@ export default async function OrderDetailPage({
             total={Number(order.total)}
             awb={order.awbTrackingNumber}
             labelUrl={order.labelUrl}
+            manifestUrl={order.manifestUrl}
+            hasShipment={Boolean(order.shiprocketShipmentId)}
           />
           <section className="rounded-soft-xl border border-sand-line bg-parchment p-5">
             <h2 className="font-display text-2xl">Customer & delivery</h2>

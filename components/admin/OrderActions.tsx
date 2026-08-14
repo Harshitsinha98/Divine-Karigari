@@ -18,6 +18,8 @@ export function OrderActions({
   total,
   awb,
   labelUrl,
+  manifestUrl,
+  hasShipment,
 }: {
   id: string;
   status: string;
@@ -25,6 +27,8 @@ export function OrderActions({
   total: number;
   awb?: string | null;
   labelUrl?: string | null;
+  manifestUrl?: string | null;
+  hasShipment?: boolean;
 }) {
   const [next, setNext] = useState(status);
   const [message, setMessage] = useState("");
@@ -143,8 +147,24 @@ export function OrderActions({
             rel="noreferrer"
             className="inline-flex min-h-10 items-center rounded-soft border border-sand-line px-4 text-sm hover:border-gold hover:text-gold"
           >
-            Print invoice
+            {hasShipment ? "Print Shiprocket invoice" : "Print invoice"}
           </a>
+          {awb && hasShipment ? (
+            <a
+              href={`/api/admin/orders/${id}/manifest`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-10 items-center rounded-soft border border-sand-line px-4 text-sm hover:border-gold hover:text-gold"
+            >
+              {manifestUrl
+                ? "Download Shiprocket manifest"
+                : "Generate Shiprocket manifest"}
+            </a>
+          ) : (
+            <span className="inline-flex min-h-10 items-center rounded-soft border border-sand-line px-4 text-sm text-muted-ink">
+              Manifest available after AWB
+            </span>
+          )}
         </div>
         <div className="mt-4 flex flex-wrap gap-2 border-t border-sand-line pt-4">
           <span className="w-full text-xs text-muted-ink">

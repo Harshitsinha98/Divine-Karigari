@@ -481,20 +481,7 @@ export async function generateShiprocketLabelAndPickup(
 
   // 3) Generate the manifest.
   try {
-    const manifestRes = await shiprocketFetch("/manifests/generate", {
-      method: "POST",
-      body: JSON.stringify({ shipment_id: [Number(shipmentId)] }),
-    });
-    const manifestUrl =
-      manifestRes.manifest_url ?? manifestRes.data?.manifest_url ?? null;
-    if (!manifestUrl) {
-      errors.push("Shiprocket did not return a manifest URL.");
-    } else {
-      await prisma.order.update({
-        where: { id: orderId },
-        data: { manifestUrl: String(manifestUrl) },
-      });
-    }
+    await generateShiprocketManifest(orderId, shipmentId);
   } catch (error) {
     const message =
       error instanceof Error
@@ -514,6 +501,51 @@ export async function generateShiprocketLabelAndPickup(
   });
 
   return { errors };
+}
+
+export async function generateShiprocketManifest(
+  orderId: string,
+  shipmentId: string,
+) {
+  const numericShipmentId = Number(shipmentId);
+  if (!Number.isFinite(numericShipmentId)) {
+    throw new Error("Shiprocket shipment ID is invalid.");
+  }
+
+  const manifestRes = await shiprocketFetch("/manifests/generate", {
+    method: "POST",
+    body: JSON.stringify({ shipment_id: [numericShipmentId] }),
+  });
+  const manifestUrl =
+    manifestRes.manifest_url ?? manifestRes.data?.manifest_url ?? null;
+  if (!manifestUrl) {
+    throw new Error("Shiprocket did not return a manifest URL.");
+  }
+
+  const resolvedManifestUrl = String(manifestUrl);
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { manifestUrl: resolvedManifestUrl },
+  });
+  return resolvedManifestUrl;
+}
+
+export async function getShiprocketInvoiceUrl(shiprocketOrderId: string) {
+  const numericOrderId = Number(shiprocketOrderId);
+  if (!Number.isFinite(numericOrderId)) {
+    throw new Error("Shiprocket order ID is invalid.");
+  }
+
+  const invoiceRes = await shiprocketFetch("/orders/print/invoice", {
+    method: "POST",
+    body: JSON.stringify({ ids: [numericOrderId] }),
+  });
+  const invoiceUrl =
+    invoiceRes.invoice_url ?? invoiceRes.data?.invoice_url ?? null;
+  if (!invoiceUrl) {
+    throw new Error("Shiprocket did not return an invoice URL.");
+  }
+  return String(invoiceUrl);
 }
 
 /**

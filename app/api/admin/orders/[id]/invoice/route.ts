@@ -1,5 +1,7 @@
+import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-api";
 import { prisma } from "@/lib/prisma";
+import { getShiprocketInvoiceUrl } from "@/lib/shiprocket";
 type Context = { params: { id: string } };
 const esc = (value: unknown) =>
   String(value ?? "").replace(
@@ -17,6 +19,19 @@ export async function GET(_: Request, { params }: Context) {
     include: { user: true, items: true },
   });
   if (!order) return new Response("Order not found", { status: 404 });
+
+  // Shiprocket provides the courier invoice after an order has been created.
+  // Keep the branded tax invoice below as a safe fallback for unsynced orders
+  // or when Shiprocket has not made its document available yet.
+  if (order.shiprocketOrderId) {
+    try {
+      const invoiceUrl = await getShiprocketInvoiceUrl(order.shiprocketOrderId);
+      return NextResponse.redirect(invoiceUrl);
+    } catch (error) {
+      console.error("[shiprocket] Invoice generation failed:", error);
+    }
+  }
+
   const address = order.shippingAddress as {
     recipientName?: string;
     line1?: string;
