@@ -6,6 +6,7 @@ import {
   Boxes,
   FileBarChart,
   FolderTree,
+  Gift,
   LogOut,
   Menu,
   RotateCcw,
@@ -35,6 +36,12 @@ const links = [
     href: "/admin/categories",
     label: "Categories",
     icon: FolderTree,
+    roles: ["SUPER_ADMIN", "INVENTORY_MANAGER"],
+  },
+  {
+    href: "/admin/builder-items",
+    label: "Gift Builder",
+    icon: Gift,
     roles: ["SUPER_ADMIN", "INVENTORY_MANAGER"],
   },
   {

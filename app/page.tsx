@@ -20,7 +20,12 @@ import { SocialProofGrid } from "@/components/home/SocialProofGrid";
 import { NewsletterForm } from "@/components/home/NewsletterForm";
 import { Reveal } from "@/components/motion/Reveal";
 import { ParallaxSection, FloatingDecor } from "@/components/motion/ParallaxSection";
-import { getHomepageProducts, getListingProducts } from "@/lib/catalog";
+import { GiftBuilderStudio } from "@/components/home/GiftBuilderStudio";
+import {
+  getBuilderItems,
+  getHomepageProducts,
+  getListingProducts,
+} from "@/lib/catalog";
 import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -31,13 +36,21 @@ export const metadata = pageMetadata(
 );
 
 export default async function Home() {
-  const [newArrivals, bestsellersResult, rakhiResult, personalizedResult] =
-    await Promise.all([
-      getHomepageProducts(),
-      getListingProducts({ sort: "popularity" }),
-      getListingProducts({ category: "rakhi-festive" }),
-      getListingProducts({ category: "personalized-gifts" }),
-    ]);
+  const [
+    newArrivals,
+    bestsellersResult,
+    rakhiResult,
+    personalizedResult,
+    bouquetBuilder,
+    giftboxBuilder,
+  ] = await Promise.all([
+    getHomepageProducts(),
+    getListingProducts({ sort: "popularity" }),
+    getListingProducts({ category: "rakhi-festive" }),
+    getListingProducts({ category: "personalized-gifts" }),
+    getBuilderItems("bouquet"),
+    getBuilderItems("giftbox"),
+  ]);
 
   const bestsellers = bestsellersResult.products;
   const personalized = personalizedResult.products;
@@ -171,6 +184,19 @@ export default async function Home() {
 
         {/* Bottom gradient fade */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-parchment to-transparent" />
+      </section>
+
+      {/* ═══════════════════════════════════════════════
+          GIFT BUILDER — Customizable bouquet & gift box (below hero)
+      ═══════════════════════════════════════════════ */}
+      <section className="container pt-14 sm:pt-20">
+        <Reveal>
+          <GiftBuilderStudio
+            bouquetItems={bouquetBuilder.items}
+            giftboxItems={giftboxBuilder.items}
+            demo={bouquetBuilder.demo && giftboxBuilder.demo}
+          />
+        </Reveal>
       </section>
 
       {/* ═══════════════════════════════════════════════

@@ -1,5 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import type { CatalogProduct } from "@/components/home/ProductCard";
+import {
+  BUILDER_CATEGORY_NAME,
+  BUILDER_CATEGORY_SLUG,
+  BUILDER_TAG,
+  STARTER_BUILDER_ITEMS,
+  builderSlugify,
+  type BuilderType,
+} from "@/lib/builder";
 
 const fallbackProducts: CatalogProduct[] = [
   {
@@ -83,7 +91,10 @@ export const homepageCategories = [
 export async function getHomepageProducts() {
   try {
     const products = await prisma.product.findMany({
-      where: { status: "ACTIVE" },
+      where: {
+        status: "ACTIVE",
+        category: { slug: { not: BUILDER_CATEGORY_SLUG } },
+      },
       include: { category: true },
       orderBy: { createdAt: "desc" },
       take: 12,
@@ -127,7 +138,9 @@ export async function getListingProducts(filters: {
   try {
     const where = {
       status: "ACTIVE" as const,
-      ...(filters.category ? { category: { slug: filters.category } } : {}),
+      ...(filters.category
+        ? { category: { slug: filters.category } }
+        : { category: { slug: { not: BUILDER_CATEGORY_SLUG } } }),
       ...(filters.occasion ? { occasionTags: { has: filters.occasion } } : {}),
       ...(filters.color ? { colors: { has: filters.color } } : {}),
       ...(filters.material ? { materials: { has: filters.material } } : {}),
@@ -236,4 +249,57 @@ export async function getProductBySlug(slug: string) {
     customizationMaxLength: fallback.customizationEnabled ? 40 : null,
     category: fallback.category,
   };
+}
+
+
+const demoBuilderItems = (type: BuilderType): CatalogProduct[] =>
+  STARTER_BUILDER_ITEMS.filter((item) => item.types.includes(type)).map(
+    (item) => {
+      const slug = `builder-demo-${builderSlugify(item.name)}`;
+      return {
+        id: slug,
+        name: item.name,
+        slug,
+        price: item.price,
+        images: [] as string[],
+        category: { name: BUILDER_CATEGORY_NAME, slug: BUILDER_CATEGORY_SLUG },
+      };
+    },
+  );
+
+// Items available in the customizable Bouquet / Gift Box builder. Falls back
+// to the starter set (teddy, chocolate, pen, clutcher, scrunchy) until an
+// admin adds real, purchasable items via Admin -> Gift Builder.
+export async function getBuilderItems(
+  type: BuilderType,
+): Promise<{ items: CatalogProduct[]; demo: boolean }> {
+  try {
+    const products = await prisma.product.findMany({
+      where: {
+        status: "ACTIVE",
+        category: { slug: BUILDER_CATEGORY_SLUG },
+        occasionTags: { has: BUILDER_TAG[type] },
+      },
+      include: { category: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (!products.length) return { items: demoBuilderItems(type), demo: true };
+    return {
+      items: products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        shortDescription: product.shortDescription,
+        price: Number(product.price),
+        images: product.images,
+        category: { name: product.category.name, slug: product.category.slug },
+        customizationEnabled: product.customizationEnabled,
+        stock: product.stock,
+        occasionTags: product.occasionTags,
+      })),
+      demo: false,
+    };
+  } catch {
+    return { items: demoBuilderItems(type), demo: true };
+  }
 }

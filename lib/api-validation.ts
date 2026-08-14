@@ -58,6 +58,15 @@ export const productInputSchema = z.object({
     .default([]),
 });
 
+export const builderItemInputSchema = z.object({
+  name: clean(1, 160),
+  imageUrl: z.union([z.string().url(), z.literal("")]).optional(),
+  price: decimalField,
+  bouquet: z.boolean().default(true),
+  giftbox: z.boolean().default(true),
+  active: z.boolean().default(true),
+});
+
 export const categoryInputSchema = z.object({
   name: clean(1, 120),
   slug: z
