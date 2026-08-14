@@ -21,7 +21,6 @@ const updateSchema = z.object({
     "SHIPPED",
     "OUT_FOR_DELIVERY",
     "DELIVERED",
-    "CANCELLED",
     "RETURNED",
     "RTO",
   ]),
@@ -70,22 +69,42 @@ export async function PUT(request: Request, { params }: Context) {
   if (error) return error;
   try {
     const input = updateSchema.parse(await request.json());
-    const order = await prisma.order.update({
-      where: { id: params.id },
-      data: {
-        status: input.status,
-        deliveredAt: input.status === "DELIVERED" ? new Date() : undefined,
-        trackingEvents: {
-          create: {
-            status: input.status,
-            title: title[input.status],
-            description: input.note,
-            location: input.location,
-          },
+    const order = await prisma.$transaction(async (tx) => {
+      const updated = await tx.order.updateMany({
+        where: {
+          id: params.id,
+          status: { not: "CANCELLED" },
+          OR: [
+            { shiprocketSyncError: null },
+            {
+              shiprocketSyncError: {
+                not: "Shiprocket cancellation in progress",
+              },
+            },
+          ],
         },
-      },
-      include,
+        data: {
+          status: input.status,
+          deliveredAt: input.status === "DELIVERED" ? new Date() : undefined,
+        },
+      });
+      if (!updated.count) return null;
+      await tx.trackingEvent.create({
+        data: {
+          orderId: params.id,
+          status: input.status,
+          title: title[input.status],
+          description: input.note,
+          location: input.location,
+        },
+      });
+      return tx.order.findUnique({ where: { id: params.id }, include });
     });
+    if (!order)
+      return NextResponse.json(
+        { error: "Cancelled or cancelling orders cannot be updated." },
+        { status: 409 },
+      );
     return NextResponse.json({ data: order });
   } catch (caught) {
     return adminError(caught);

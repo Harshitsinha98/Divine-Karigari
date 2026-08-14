@@ -278,24 +278,41 @@ async function assignShiprocketAwbAndPrepareShipment(
     );
   }
 
-  await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      awbTrackingNumber: String(awb),
-      courierName:
-        assignment.courier_name ?? assignment.courier_company_name ?? null,
-      status: "SHIPPED",
-      shiprocketSyncError: null,
-      trackingEvents: {
-        create: {
-          status: "SHIPPED",
-          title: "Shipment ready",
-          description: `AWB ${awb} assigned via ${assignment.courier_name ?? assignment.courier_company_name ?? "courier"}.`,
-        },
+  const persisted = await prisma.$transaction(async (tx) => {
+    const updated = await tx.order.updateMany({
+      where: {
+        id: orderId,
+        status: { not: "CANCELLED" },
+        OR: [
+          { shiprocketSyncError: null },
+          {
+            shiprocketSyncError: {
+              not: "Shiprocket cancellation in progress",
+            },
+          },
+        ],
       },
-    },
+      data: {
+        awbTrackingNumber: String(awb),
+        courierName:
+          assignment.courier_name ?? assignment.courier_company_name ?? null,
+        status: "SHIPPED",
+        shiprocketSyncError: null,
+      },
+    });
+    if (!updated.count) return false;
+    await tx.trackingEvent.create({
+      data: {
+        orderId,
+        status: "SHIPPED",
+        title: "Shipment ready",
+        description: `AWB ${awb} assigned via ${assignment.courier_name ?? assignment.courier_company_name ?? "courier"}.`,
+      },
+    });
+    return true;
   });
 
+  if (!persisted) return;
   await generateShiprocketLabelAndPickup(orderId, shipmentId);
 }
 
@@ -491,8 +508,12 @@ export async function generateShiprocketLabelAndPickup(
     errors.push(`Manifest: ${message}`);
   }
 
-  await prisma.order.update({
-    where: { id: orderId },
+  await prisma.order.updateMany({
+    where: {
+      id: orderId,
+      status: { not: "CANCELLED" },
+      shiprocketSyncError: { not: "Shiprocket cancellation in progress" },
+    },
     data: {
       shiprocketSyncError: errors.length
         ? `Shiprocket fulfillment follow-up required: ${errors.join(" ")}`
@@ -548,6 +569,65 @@ export async function getShiprocketInvoiceUrl(shiprocketOrderId: string) {
   return String(invoiceUrl);
 }
 
+export async function cancelShiprocketOrder(
+  shiprocketOrderId: string | null,
+  awbTrackingNumber: string | null,
+) {
+  if (!shiprocketOrderId) return;
+  if (!configured()) {
+    throw new Error(
+      "Shiprocket is not configured, so this shipment cannot be cancelled safely.",
+    );
+  }
+  const numericOrderId = Number(shiprocketOrderId);
+  if (!Number.isFinite(numericOrderId)) {
+    throw new Error("Shiprocket order ID is invalid.");
+  }
+
+  const pickupEvidence = await hasShiprocketPickupEvidence(awbTrackingNumber);
+  if (pickupEvidence) {
+    throw new Error(
+      "This shipment has already been picked up or is in transit and cannot be cancelled.",
+    );
+  }
+
+  try {
+    await shiprocketFetch("/orders/cancel", {
+      method: "POST",
+      body: JSON.stringify({ ids: [numericOrderId] }),
+    });
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : "";
+    if (!/already.*cancel|cancelled.*already/i.test(message)) throw caught;
+  }
+}
+
+async function hasShiprocketPickupEvidence(awb: string | null) {
+  if (!awb) return false;
+  const tracking = await trackShiprocketAwb(awb);
+  if (!tracking) {
+    throw new Error(
+      "Shiprocket tracking could not be verified. Please retry cancellation before pickup.",
+    );
+  }
+  const statuses = [
+    tracking.currentStatus,
+    ...tracking.activities.flatMap(
+      (activity: { status: string | null; activity: string | null }) => [
+        activity.status,
+        activity.activity,
+      ],
+    ),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .replaceAll("_", " ");
+  return /picked\s*up|in\s*transit|out\s*for\s*delivery|delivered|rto|return\s*to\s*origin/.test(
+    statuses,
+  );
+}
+
 /**
  * Fetches live tracking data from Shiprocket for a given AWB.
  * Returns the tracking activities array or null.
@@ -588,6 +668,8 @@ export async function resyncShiprocketOrder(orderId: string) {
   if (!existing) throw new Error("Order not found.");
   if (existing.status === "CANCELLED")
     throw new Error("Cancelled orders cannot be synced to Shiprocket.");
+  if (existing.shiprocketSyncError === "Shiprocket cancellation in progress")
+    throw new Error("Order cancellation is in progress.");
   if (existing.paymentStatus !== "PAID")
     throw new Error("Only paid orders can be synced to Shiprocket.");
 

@@ -7,7 +7,6 @@ const statuses = [
   "SHIPPED",
   "OUT_FOR_DELIVERY",
   "DELIVERED",
-  "CANCELLED",
   "RETURNED",
   "RTO",
 ];
@@ -31,11 +30,17 @@ export function OrderActions({
   hasShipment?: boolean;
 }) {
   const [next, setNext] = useState(status);
+  const statusOptions =
+    status === "CANCELLED" ? ["CANCELLED", ...statuses] : statuses;
   const [message, setMessage] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
   const [destination, setDestination] = useState("WALLET");
   const [reason, setReason] = useState("Customer refund");
   const [busy, setBusy] = useState(false);
+  const [cancelled, setCancelled] = useState(status === "CANCELLED");
+  const cancellationEligible =
+    ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED"].includes(status) &&
+    !cancelled;
 
   const quickStatus = async (target: string) => {
     setBusy(true);
@@ -82,6 +87,27 @@ export function OrderActions({
     );
     if (response.ok) setRefundAmount("");
   };
+  const cancelOrder = async () => {
+    if (
+      !window.confirm(
+        "Cancel this order? This will also cancel its Shiprocket shipment if it has not been picked up.",
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    const response = await fetch(`/api/admin/orders/${id}/cancel`, {
+      method: "POST",
+    });
+    const result = await response.json();
+    setBusy(false);
+    setMessage(
+      response.ok
+        ? "Order cancelled before courier pickup."
+        : (result.error ?? "Cancellation failed."),
+    );
+    if (response.ok) setCancelled(true);
+  };
   const sync = async () => {
     const response = await fetch(`/api/admin/orders/${id}/shiprocket-sync`, {
       method: "POST",
@@ -105,14 +131,17 @@ export function OrderActions({
             value={next}
             onChange={(event) => setNext(event.target.value)}
           >
-            {statuses.map((item) => (
-              <option key={item}>{item}</option>
+            {statusOptions.map((item) => (
+              <option key={item} disabled={item === "CANCELLED"}>
+                {item}
+              </option>
             ))}
           </select>
         </label>
         <button
           onClick={update}
-          className="mt-3 min-h-10 rounded-soft bg-ink px-4 text-sm text-parchment"
+          disabled={cancelled}
+          className="mt-3 min-h-10 rounded-soft bg-ink px-4 text-sm text-parchment disabled:cursor-not-allowed disabled:opacity-40"
         >
           Update status
         </button>
@@ -121,6 +150,13 @@ export function OrderActions({
           className="ml-2 min-h-10 rounded-soft border border-sand-line px-4 text-sm"
         >
           Re-sync Shiprocket
+        </button>
+        <button
+          disabled={!cancellationEligible || busy}
+          onClick={cancelOrder}
+          className="ml-2 mt-2 min-h-10 rounded-soft border border-oxblood/40 px-4 text-sm text-oxblood hover:bg-oxblood hover:text-parchment disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Cancel order
         </button>
       </section>
 

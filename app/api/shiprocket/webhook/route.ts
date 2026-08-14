@@ -74,28 +74,49 @@ export async function POST(request: Request) {
       payload.courier_name ?? payload.courier_company_name ?? order.courierName;
     const etdValue = payload.etd ?? payload.estimated_delivery_date;
     const deliveredAt = status === "DELIVERED" ? new Date() : order.deliveredAt;
-    const updated = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        status,
-        awbTrackingNumber: awb ? String(awb) : null,
-        courierName: courier ? String(courier) : null,
-        estimatedDeliveryDate: etdValue
-          ? new Date(etdValue)
-          : order.estimatedDeliveryDate,
-        deliveredAt,
-        trackingEvents: {
-          create: {
-            status,
-            title: titleFor(rawStatus),
-            description: payload.status_description ?? payload.activity ?? null,
-            location: payload.current_location ?? payload.location ?? null,
-            rawPayload: payload,
-          },
+    const applied = await prisma.$transaction(async (tx) => {
+      const updated = await tx.order.updateMany({
+        where: {
+          id: order.id,
+          status: { not: "CANCELLED" },
+          OR: [
+            { shiprocketSyncError: null },
+            {
+              shiprocketSyncError: {
+                not: "Shiprocket cancellation in progress",
+              },
+            },
+          ],
         },
-      },
+        data: {
+          status,
+          awbTrackingNumber: awb ? String(awb) : null,
+          courierName: courier ? String(courier) : null,
+          estimatedDeliveryDate: etdValue
+            ? new Date(etdValue)
+            : order.estimatedDeliveryDate,
+          deliveredAt,
+        },
+      });
+      if (!updated.count) return false;
+      await tx.trackingEvent.create({
+        data: {
+          orderId: order.id,
+          status,
+          title: titleFor(rawStatus),
+          description: payload.status_description ?? payload.activity ?? null,
+          location: payload.current_location ?? payload.location ?? null,
+          rawPayload: payload,
+        },
+      });
+      return true;
+    });
+    if (!applied) return NextResponse.json({ received: true });
+    const updated = await prisma.order.findUnique({
+      where: { id: order.id },
       include: { user: true },
     });
+    if (!updated) return NextResponse.json({ received: true });
     const preferences = updated.user.notificationPreferences as {
       orderUpdates?: boolean;
       mobileUpdates?: boolean;
@@ -117,28 +138,47 @@ export async function POST(request: Request) {
     const returnRequest = await prisma.returnRequest.findUnique({
       where: { orderId: order.id },
     });
-      if (returnRequest && (returnRequest.status === "APPROVED" || returnRequest.status === "SHIPPED")) {
+    if (
+      returnRequest &&
+      (returnRequest.status === "APPROVED" ||
+        returnRequest.status === "SHIPPED")
+    ) {
       const returnStatus = rawStatus.toLowerCase();
-      let newReturnStatus: "APPROVED" | "SHIPPED" | "COMPLETED" = returnRequest.status as "APPROVED" | "SHIPPED";
-      if (returnStatus.includes("pickup") || returnStatus.includes("ship") || returnStatus.includes("transit")) {
+      let newReturnStatus: "APPROVED" | "SHIPPED" | "COMPLETED" =
+        returnRequest.status as "APPROVED" | "SHIPPED";
+      if (
+        returnStatus.includes("pickup") ||
+        returnStatus.includes("ship") ||
+        returnStatus.includes("transit")
+      ) {
         newReturnStatus = "SHIPPED";
-      } else if (returnStatus.includes("delivered") || returnStatus.includes("received")) {
+      } else if (
+        returnStatus.includes("delivered") ||
+        returnStatus.includes("received")
+      ) {
         newReturnStatus = "COMPLETED";
       }
-      const returnAwb = payload.awb_code ?? payload.awb ?? returnRequest.returnAwb;
-      const returnCourier = payload.courier_name ?? payload.courier_company_name ?? returnRequest.returnCourier;
+      const returnAwb =
+        payload.awb_code ?? payload.awb ?? returnRequest.returnAwb;
+      const returnCourier =
+        payload.courier_name ??
+        payload.courier_company_name ??
+        returnRequest.returnCourier;
 
       await prisma.returnRequest.update({
         where: { id: returnRequest.id },
         data: {
           status: newReturnStatus as "SHIPPED" | "COMPLETED",
           returnAwb: returnAwb ? String(returnAwb) : returnRequest.returnAwb,
-          returnCourier: returnCourier ? String(returnCourier) : returnRequest.returnCourier,
+          returnCourier: returnCourier
+            ? String(returnCourier)
+            : returnRequest.returnCourier,
           trackingEvents: {
             create: {
               status: newReturnStatus,
               title: `Return: ${titleFor(rawStatus)}`,
-              description: payload.status_description ?? payload.activity ?? null,
+              description:
+                payload.status_description ?? payload.activity ?? null,
               location: payload.current_location ?? payload.location ?? null,
               rawPayload: payload,
             },

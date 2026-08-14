@@ -18,6 +18,7 @@ export default async function ConfirmedPage({
     include: { items: { include: { variant: true } } },
   });
   if (!order) notFound();
+  if (order.status === "CANCELLED") redirect(`/account/orders/${order.id}`);
   if (order.paymentStatus !== "PAID") redirect("/account/orders");
 
   return (

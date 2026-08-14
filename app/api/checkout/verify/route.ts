@@ -91,20 +91,43 @@ export async function POST(request: Request) {
         providerSignature: input.razorpay_signature,
       },
     });
-    const updatedOrder = await tx.order.update({
-      where: { id: input.orderId },
+    const transitioned = await tx.order.updateMany({
+      where: {
+        id: input.orderId,
+        status: { not: "CANCELLED" },
+        OR: [
+          { shiprocketSyncError: null },
+          {
+            shiprocketSyncError: {
+              not: "Shiprocket cancellation in progress",
+            },
+          },
+        ],
+      },
       data: {
         status: "CONFIRMED",
         paymentStatus: "PAID",
-        trackingEvents: {
-          create: {
-            status: "CONFIRMED",
-            title: "Order confirmed",
-            description: "Your payment has been verified.",
-          },
-        },
       },
+    });
+    if (!transitioned.count) {
+      return tx.order.update({
+        where: { id: input.orderId },
+        data: { paymentStatus: "PAID" },
+        include: { user: true },
+      });
+    }
+    const updatedOrder = await tx.order.findUnique({
+      where: { id: input.orderId },
       include: { user: true },
+    });
+    if (!updatedOrder) throw new Error("Order not found.");
+    await tx.trackingEvent.create({
+      data: {
+        orderId: updatedOrder.id,
+        status: "CONFIRMED",
+        title: "Order confirmed",
+        description: "Your payment has been verified.",
+      },
     });
     if (updatedOrder.couponId) {
       await tx.couponRedemption.create({
@@ -142,6 +165,12 @@ export async function POST(request: Request) {
       });
     return updatedOrder;
   });
+  if (
+    order.status === "CANCELLED" ||
+    order.shiprocketSyncError === "Shiprocket cancellation in progress"
+  ) {
+    return NextResponse.json({ data: { orderNumber: order.orderNumber } });
+  }
   const notificationPreferences = order.user.notificationPreferences as {
     mobileUpdates?: boolean;
   };

@@ -5,6 +5,7 @@ import {
   AccountCard,
 } from "@/components/account/AccountSection";
 import { ReorderButton } from "@/components/account/ReorderButton";
+import { CancelOrderButton } from "@/components/account/CancelOrderButton";
 import { StatusBadge } from "@/components/account/StatusBadge";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -36,7 +37,9 @@ export default async function OrderDetailPage({
     include: {
       items: { include: { product: true } },
       trackingEvents: { orderBy: { happenedAt: "desc" } },
-      returnRequest: { include: { trackingEvents: { orderBy: { happenedAt: "desc" } } } },
+      returnRequest: {
+        include: { trackingEvents: { orderBy: { happenedAt: "desc" } } },
+      },
     },
   });
   if (!order) notFound();
@@ -54,6 +57,12 @@ export default async function OrderDetailPage({
     Date.now() <=
       (order.deliveredAt ?? order.updatedAt).getTime() +
         returnWindowDays * 86400000;
+  const cancellationEligible = [
+    "PENDING",
+    "CONFIRMED",
+    "PROCESSING",
+    "SHIPPED",
+  ].includes(order.status);
   const reorderItems = order.items.map((item) => ({
     productId: item.productId,
     slug: item.product.slug,
@@ -179,6 +188,7 @@ export default async function OrderDetailPage({
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <ReorderButton items={reorderItems} />
+          {cancellationEligible && <CancelOrderButton orderId={order.id} />}
           <a
             href={`/api/account/orders/${order.id}/invoice`}
             download
