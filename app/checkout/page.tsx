@@ -34,6 +34,7 @@ type Address = {
   isDefault: boolean;
 };
 const emptyAddress = {
+  label: "",
   recipientName: "",
   phone: "",
   line1: "",
@@ -50,6 +51,7 @@ export default function CheckoutPage() {
   const [selectedAddress, setSelectedAddress] = useState<string>("");
   const [newAddress, setNewAddress] = useState(emptyAddress);
   const [addingAddress, setAddingAddress] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -155,8 +157,54 @@ export default function CheckoutPage() {
     currentAddress.city &&
     currentAddress.state &&
     currentAddress.postalCode &&
-    (giftToSomeoneElse ? recipient.name && recipient.phone.length >= 13 : buyer.name),
+    currentAddress.phone.replace(/\D/g, "").length >= 10 &&
+    (giftToSomeoneElse ? recipient.name : buyer.name),
   );
+
+  const continueWithAddress = async () => {
+    if (!currentAddress || !canContinue) return;
+    setError("");
+
+    if (!addingAddress) {
+      setStep(2);
+      return;
+    }
+
+    setSavingAddress(true);
+    try {
+      const response = await fetch("/api/account/addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: newAddress.label.trim() || "Delivery address",
+          recipientName: currentAddress.recipientName,
+          phone: currentAddress.phone,
+          line1: currentAddress.line1,
+          line2: currentAddress.line2?.trim() || undefined,
+          city: currentAddress.city,
+          state: currentAddress.state,
+          postalCode: currentAddress.postalCode,
+          country: currentAddress.country || "India",
+          isDefault: addresses.length === 0,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error ?? "Unable to save this delivery address.");
+        return;
+      }
+      const savedAddress = result.data as Address;
+      setAddresses((items) => [savedAddress, ...items]);
+      setSelectedAddress(savedAddress.id);
+      setAddingAddress(false);
+      setNewAddress(emptyAddress);
+      setStep(2);
+    } catch {
+      setError("Unable to save this delivery address. Please try again.");
+    } finally {
+      setSavingAddress(false);
+    }
+  };
   const startPayment = async () => {
     if (!currentAddress || !cart.length || serviceability?.available === false)
       return;
@@ -325,8 +373,25 @@ export default function CheckoutPage() {
                   </button>
                   {addingAddress && (
                     <div className="rounded-soft-xl border border-sand-line bg-warm-white p-5 shadow-soft sm:p-6">
-                      <h3 className="mb-4 font-display text-xl">New delivery address</h3>
+                      <h3 className="mb-1 font-display text-xl">
+                        New delivery address
+                      </h3>
+                      <p className="mb-4 text-sm text-muted-ink">
+                        We&apos;ll save this address to your profile for faster
+                        checkout next time.
+                      </p>
                       <div className="grid gap-4 sm:grid-cols-2">
+                        <Input
+                          className="sm:col-span-2"
+                          placeholder="Save as (e.g. Home, Office)"
+                          value={newAddress.label}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              label: e.target.value,
+                            })
+                          }
+                        />
                         <Input
                           required
                           className="sm:col-span-2"
@@ -360,12 +425,19 @@ export default function CheckoutPage() {
                               placeholder="6-digit Pincode"
                               value={newAddress.postalCode}
                               onChange={async (e) => {
-                                const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                                setNewAddress({ ...newAddress, postalCode: val });
+                                const val = e.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 6);
+                                setNewAddress({
+                                  ...newAddress,
+                                  postalCode: val,
+                                });
                                 // Auto-fill state & city when 6 digits entered
                                 if (val.length === 6) {
                                   try {
-                                    const res = await fetch(`/api/pincode/lookup?pincode=${val}`);
+                                    const res = await fetch(
+                                      `/api/pincode/lookup?pincode=${val}`,
+                                    );
                                     if (res.ok) {
                                       const { data } = await res.json();
                                       setNewAddress((prev) => ({
@@ -380,15 +452,26 @@ export default function CheckoutPage() {
                               }}
                               className="h-12 flex-1 bg-transparent px-4 text-sm text-ink outline-none placeholder:text-muted-ink/60"
                             />
-                            {newAddress.postalCode.length === 6 && newAddress.state && (
-                              <span className="flex items-center gap-1 border-l border-sand-line bg-tulsi/5 px-3 text-xs text-tulsi">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5"/></svg>
-                                {newAddress.city}, {newAddress.state}
-                              </span>
-                            )}
+                            {newAddress.postalCode.length === 6 &&
+                              newAddress.state && (
+                                <span className="flex items-center gap-1 border-l border-sand-line bg-tulsi/5 px-3 text-xs text-tulsi">
+                                  <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                  >
+                                    <path d="M20 6 9 17l-5-5" />
+                                  </svg>
+                                  {newAddress.city}, {newAddress.state}
+                                </span>
+                              )}
                           </div>
                           <p className="mt-1.5 text-xs text-muted-ink/70">
-                            City & state will auto-fill when you enter the pincode
+                            City & state will auto-fill when you enter the
+                            pincode
                           </p>
                         </div>
                         <StateCitySelect
@@ -403,7 +486,11 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div className="mt-5 flex gap-2">
-                        <Button type="button" onClick={() => setAddingAddress(false)} variant="ghost">
+                        <Button
+                          type="button"
+                          onClick={() => setAddingAddress(false)}
+                          variant="ghost"
+                        >
                           Cancel
                         </Button>
                       </div>
@@ -412,7 +499,9 @@ export default function CheckoutPage() {
                 </div>
                 {/* Recipient details */}
                 <div className="mt-6 rounded-soft-xl border border-sand-line bg-warm-white p-5">
-                  <h3 className="font-display text-lg">Who is receiving this?</h3>
+                  <h3 className="font-display text-lg">
+                    Who is receiving this?
+                  </h3>
 
                   {/* "Same as me" toggle */}
                   <label className="mt-4 flex items-center gap-2.5 text-sm">
@@ -426,7 +515,8 @@ export default function CheckoutPage() {
                       Deliver to me
                       {buyer.name && (
                         <span className="ml-1 text-muted-ink">
-                          ({buyer.name}{buyer.phone ? `, ${buyer.phone}` : ""})
+                          ({buyer.name}
+                          {buyer.phone ? `, ${buyer.phone}` : ""})
                         </span>
                       )}
                     </span>
@@ -468,7 +558,8 @@ export default function CheckoutPage() {
                         </div>
                       </div>
                       <p className="mt-2 text-xs text-muted-ink">
-                        Courier updates will be sent to the recipient&apos;s number.
+                        Courier updates will be sent to the recipient&apos;s
+                        number.
                       </p>
                     </div>
                   )}
@@ -496,16 +587,25 @@ export default function CheckoutPage() {
                     .
                   </p>
                 )}
+                {error && (
+                  <p className="mt-4 rounded-soft border border-oxblood/20 bg-oxblood/5 p-3 text-sm text-oxblood">
+                    {error}
+                  </p>
+                )}
                 <Button
                   disabled={
                     !canContinue ||
+                    savingAddress ||
                     checkingServiceability ||
                     serviceability?.available === false
                   }
                   className="mt-7"
-                  onClick={() => setStep(2)}
+                  onClick={continueWithAddress}
                 >
-                  Continue to review <ChevronRight size={16} />
+                  {savingAddress
+                    ? "Saving delivery address..."
+                    : "Continue to review"}{" "}
+                  <ChevronRight size={16} />
                 </Button>
               </AccountCard>
             )}
