@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AccountCard } from "@/components/account/AccountSection";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { realEmailOrEmpty } from "@/lib/placeholder-email";
 export function ProfileManager() {
   const [profile, setProfile] = useState({
     name: "",
@@ -71,7 +72,11 @@ export function ProfileManager() {
             onChange={(e) => setProfile({ ...profile, name: e.target.value })}
             placeholder="Full name"
           />
-          <Input disabled value={profile.email} placeholder="Email address" />
+          <Input
+            disabled
+            value={realEmailOrEmpty(profile.email)}
+            placeholder="Email address"
+          />
           <Input
             required
             value={profile.phone}

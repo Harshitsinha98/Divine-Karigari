@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Mail, Phone, ShieldAlert } from "lucide-react";
 import { AccountCard } from "@/components/account/AccountSection";
 import { Button } from "@/components/ui/Button";
+import { isPlaceholderEmail } from "@/lib/placeholder-email";
 
 type Profile = {
   email: string;
@@ -37,7 +38,9 @@ export function VerificationManager() {
       .then((res) => {
         if (res.data) {
           setProfile(res.data);
-          setEmailInput(res.data.email ?? "");
+          setEmailInput(
+            isPlaceholderEmail(res.data.email) ? "" : (res.data.email ?? ""),
+          );
           const digits = (res.data.phone ?? "").replace(/^\+91/, "");
           setPhoneInput(digits);
         }
@@ -202,7 +205,9 @@ export function VerificationManager() {
             <div className="flex items-center gap-2">
               <Mail size={16} className="text-muted-ink" />
               <span className="text-sm font-medium">
-                {profile.email || "No email"}
+                {isPlaceholderEmail(profile.email) || !profile.email
+                  ? "No email added yet"
+                  : profile.email}
               </span>
             </div>
             {profile.emailVerified ? (
