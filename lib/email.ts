@@ -37,6 +37,18 @@ function emailHtml(input: EmailInput) {
   )}</h1></td></tr><tr><td style="padding:8px 32px 24px;font-size:15px;line-height:1.75;color:#554b40">${input.body}</td></tr>${action}<tr><td style="padding:22px 32px;border-top:1px solid #DFCFAE;font-size:12px;line-height:1.6;color:#706657">Divine Karigari, India<br><a href="${appUrl()}" style="color:#7A2530">${appUrl()}</a></td></tr></table></td></tr></table></body></html>`;
 }
 
+function emailText(input: EmailInput) {
+  const bodyText = input.body
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const action = input.action
+    ? `\n\n${input.action.label}: ${input.action.url}`
+    : "";
+  return `${input.heading}\n\n${bodyText}${action}\n\n— Divine Karigari\n${appUrl()}`;
+}
+
 export async function sendTransactionalEmail(input: EmailInput) {
   const apiKey = process.env.RESEND_API_KEY;
   const from =
@@ -61,6 +73,7 @@ export async function sendTransactionalEmail(input: EmailInput) {
       reply_to: process.env.EMAIL_REPLY_TO,
       subject: input.subject,
       html: emailHtml(input),
+      text: emailText(input),
     }),
   });
   const payload = await response.json().catch(() => ({}));
