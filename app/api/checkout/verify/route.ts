@@ -4,7 +4,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { sendOrderConfirmationEmail } from "@/lib/order-email";
-import { createShiprocketOrderForOrder } from "@/lib/shiprocket";
+import {
+  createShiprocketOrderForOrder,
+  resyncShiprocketOrder,
+} from "@/lib/shiprocket";
 
 const schema = z.object({
   orderId: z.string(),
@@ -68,8 +71,15 @@ export async function POST(request: Request) {
   if (payment.status === "PAID") {
     const existing = await prisma.order.findUnique({
       where: { id: payment.orderId },
-      select: { orderNumber: true },
+      select: { id: true, orderNumber: true },
     });
+    if (existing) {
+      try {
+        await resyncShiprocketOrder(existing.id);
+      } catch (error) {
+        console.error("[checkout] Shiprocket paid-order retry failed:", error);
+      }
+    }
     return NextResponse.json({ data: { orderNumber: existing?.orderNumber } });
   }
   const order = await prisma.$transaction(async (tx) => {
@@ -135,14 +145,17 @@ export async function POST(request: Request) {
   const notificationPreferences = order.user.notificationPreferences as {
     mobileUpdates?: boolean;
   };
-  await sendOrderConfirmationEmail({
+  const emailDelivery = sendOrderConfirmationEmail({
     email: order.user.email,
     name: order.user.name,
     phone:
       notificationPreferences.mobileUpdates === true ? order.user.phone : null,
     orderNumber: order.orderNumber,
     total: Number(order.total),
+  }).catch((error) => {
+    console.error("[checkout] Order confirmation email failed:", error);
   });
   await createShiprocketOrderForOrder(order.id);
+  await emailDelivery;
   return NextResponse.json({ data: { orderNumber: order.orderNumber } });
 }

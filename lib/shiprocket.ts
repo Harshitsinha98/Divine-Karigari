@@ -36,11 +36,25 @@ async function getToken() {
   const email = (process.env.SHIPROCKET_EMAIL ?? "").trim();
   const password = (process.env.SHIPROCKET_PASSWORD ?? "").trim();
 
-  const response = await fetch(`${baseUrl}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "AbortError" || error.name === "TimeoutError")
+    ) {
+      throw new Error(
+        "Shiprocket authentication timed out. Please retry the sync.",
+      );
+    }
+    throw error;
+  }
 
   const data = await response.json().catch(() => ({}));
 
@@ -71,14 +85,26 @@ async function getToken() {
 
 async function shiprocketFetch(path: string, init: RequestInit = {}) {
   const token = await getToken();
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...init,
+      signal: init.signal ?? AbortSignal.timeout(20_000),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...(init.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "AbortError" || error.name === "TimeoutError")
+    ) {
+      throw new Error("Shiprocket request timed out. Please retry the sync.");
+    }
+    throw error;
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok)
     throw new Error(data.message ?? data.error ?? "Shiprocket request failed.");
@@ -149,7 +175,12 @@ export async function checkShiprocketServiceability(
     [];
   // Log raw etd for debugging delivery days parsing
   if (couriers.length > 0) {
-    console.log("[shiprocket] Raw courier[0] etd:", couriers[0].etd, "estimated_delivery_days:", couriers[0].estimated_delivery_days);
+    console.log(
+      "[shiprocket] Raw courier[0] etd:",
+      couriers[0].etd,
+      "estimated_delivery_days:",
+      couriers[0].estimated_delivery_days,
+    );
   }
   if (!couriers.length)
     return {
@@ -197,8 +228,7 @@ export async function checkShiprocketServiceability(
   // Final fallback only if nothing could be parsed
   if (!days || days <= 0) days = 5;
 
-  const rate =
-    Number(courier.rate ?? courier.freight_charge ?? 0) || null;
+  const rate = Number(courier.rate ?? courier.freight_charge ?? 0) || null;
   const estimated = new Date();
   estimated.setDate(estimated.getDate() + days);
   return {
@@ -210,9 +240,74 @@ export async function checkShiprocketServiceability(
   };
 }
 
+type ShiprocketResponse = {
+  message?: unknown;
+  error?: unknown;
+  errors?: unknown;
+  response?: { message?: unknown };
+  data?: { message?: unknown };
+};
+
+function shiprocketMessage(data: ShiprocketResponse, fallback: string) {
+  const details =
+    data.message ??
+    data.error ??
+    data.response?.message ??
+    data.data?.message ??
+    (data.errors ? JSON.stringify(data.errors) : null);
+  return details ? String(details) : fallback;
+}
+
+async function assignShiprocketAwbAndPrepareShipment(
+  orderId: string,
+  shipmentId: string,
+) {
+  const assigned = await shiprocketFetch("/courier/assign/awb", {
+    method: "POST",
+    body: JSON.stringify({ shipment_id: shipmentId }),
+  });
+  const assignment = assigned.response?.data ?? assigned.data ?? assigned;
+  const awb = assignment.awb_code ?? assignment.awb;
+
+  if (!awb) {
+    throw new Error(
+      shiprocketMessage(
+        assigned,
+        "Shiprocket did not assign an AWB. Check courier availability and retry the Shiprocket sync.",
+      ),
+    );
+  }
+
+  await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      awbTrackingNumber: String(awb),
+      courierName:
+        assignment.courier_name ?? assignment.courier_company_name ?? null,
+      status: "SHIPPED",
+      shiprocketSyncError: null,
+      trackingEvents: {
+        create: {
+          status: "SHIPPED",
+          title: "Shipment ready",
+          description: `AWB ${awb} assigned via ${assignment.courier_name ?? assignment.courier_company_name ?? "courier"}.`,
+        },
+      },
+    },
+  });
+
+  await generateShiprocketLabelAndPickup(orderId, shipmentId);
+}
+
 export async function createShiprocketOrderForOrder(orderId: string) {
   const claim = await prisma.order.updateMany({
-    where: { id: orderId, shiprocketOrderId: null, shiprocketSyncError: null },
+    where: {
+      id: orderId,
+      paymentStatus: "PAID",
+      status: { not: "CANCELLED" },
+      shiprocketOrderId: null,
+      shiprocketSyncError: null,
+    },
     data: { shiprocketSyncError: "Shiprocket sync in progress" },
   });
   if (!claim.count) return;
@@ -268,11 +363,18 @@ export async function createShiprocketOrderForOrder(orderId: string) {
       height: metrics.height,
       weight: metrics.weightKg,
     };
-    // Normalize phone to 10 digits (Shiprocket requires a valid Indian mobile)
-    const cleanPhone = String(address.phone ?? "")
-      .replace(/\D/g, "")
-      .replace(/^91/, "")
-      .slice(-10);
+    // Shiprocket accepts a 10-digit Indian mobile number. Remove country code
+    // only when it is actually present as a 12-digit `91xxxxxxxxxx` value.
+    const phoneDigits = String(address.phone ?? "").replace(/\D/g, "");
+    const cleanPhone =
+      phoneDigits.length === 12 && phoneDigits.startsWith("91")
+        ? phoneDigits.slice(2)
+        : phoneDigits.slice(-10);
+    if (cleanPhone.length !== 10) {
+      throw new Error(
+        "A valid 10-digit recipient phone number is required for Shiprocket.",
+      );
+    }
     payload.billing_phone = cleanPhone;
 
     const created = await shiprocketFetch("/orders/create/adhoc", {
@@ -313,32 +415,7 @@ export async function createShiprocketOrderForOrder(orderId: string) {
         },
       },
     });
-    const assigned = await shiprocketFetch("/courier/assign/awb", {
-      method: "POST",
-      body: JSON.stringify({ shipment_id: shipmentId }),
-    });
-    const assignment = assigned.response?.data ?? assigned.data ?? assigned;
-    const awb = assignment.awb_code ?? assignment.awb;
-    if (awb) {
-      await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          awbTrackingNumber: String(awb),
-          courierName:
-            assignment.courier_name ?? assignment.courier_company_name ?? null,
-          status: "SHIPPED",
-          trackingEvents: {
-            create: {
-              status: "SHIPPED",
-              title: "Shipment ready",
-              description: `AWB ${awb} assigned via ${assignment.courier_name ?? "courier"}.`,
-            },
-          },
-        },
-      });
-      // Auto-generate shipping label + request pickup
-      await generateShiprocketLabelAndPickup(order.id, shipmentId);
-    }
+    await assignShiprocketAwbAndPrepareShipment(order.id, shipmentId);
   } catch (error) {
     await prisma.order.update({
       where: { id: orderId },
@@ -354,40 +431,55 @@ export async function createShiprocketOrderForOrder(orderId: string) {
 
 /**
  * Generates the shipping label PDF and requests pickup for a shipment.
- * Stores the label_url and manifest_url on the order.
- * Safe to call multiple times — failures are non-fatal (logged only).
+ * Stores the label/manifest URLs and records actionable follow-up errors on the order.
+ * Safe to call multiple times when Shiprocket needs a retry.
  */
 export async function generateShiprocketLabelAndPickup(
   orderId: string,
   shipmentId: string,
 ) {
-  // 1) Generate label
+  const errors: string[] = [];
+
+  // 1) Generate the official courier label.
   try {
     const labelRes = await shiprocketFetch("/courier/generate/label", {
       method: "POST",
       body: JSON.stringify({ shipment_id: [Number(shipmentId)] }),
     });
     const labelUrl = labelRes.label_url ?? labelRes.data?.label_url ?? null;
-    if (labelUrl)
+    if (!labelUrl) {
+      errors.push("Shiprocket did not return an official shipping-label URL.");
+    } else {
       await prisma.order.update({
         where: { id: orderId },
         data: { labelUrl: String(labelUrl) },
       });
+    }
   } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown label generation error.";
     console.error("[shiprocket] Label generation failed:", error);
+    errors.push(`Label: ${message}`);
   }
 
-  // 2) Request pickup (non-fatal)
+  // 2) Request pickup. Shiprocket treats repeated requests as idempotent.
   try {
     await shiprocketFetch("/courier/generate/pickup", {
       method: "POST",
       body: JSON.stringify({ shipment_id: [Number(shipmentId)] }),
     });
   } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown pickup generation error.";
     console.error("[shiprocket] Pickup request failed:", error);
+    errors.push(`Pickup: ${message}`);
   }
 
-  // 3) Generate manifest (non-fatal)
+  // 3) Generate the manifest.
   try {
     const manifestRes = await shiprocketFetch("/manifests/generate", {
       method: "POST",
@@ -395,14 +487,33 @@ export async function generateShiprocketLabelAndPickup(
     });
     const manifestUrl =
       manifestRes.manifest_url ?? manifestRes.data?.manifest_url ?? null;
-    if (manifestUrl)
+    if (!manifestUrl) {
+      errors.push("Shiprocket did not return a manifest URL.");
+    } else {
       await prisma.order.update({
         where: { id: orderId },
         data: { manifestUrl: String(manifestUrl) },
       });
+    }
   } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown manifest generation error.";
     console.error("[shiprocket] Manifest generation failed:", error);
+    errors.push(`Manifest: ${message}`);
   }
+
+  await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      shiprocketSyncError: errors.length
+        ? `Shiprocket fulfillment follow-up required: ${errors.join(" ")}`
+        : null,
+    },
+  });
+
+  return { errors };
 }
 
 /**
@@ -445,6 +556,8 @@ export async function resyncShiprocketOrder(orderId: string) {
   if (!existing) throw new Error("Order not found.");
   if (existing.status === "CANCELLED")
     throw new Error("Cancelled orders cannot be synced to Shiprocket.");
+  if (existing.paymentStatus !== "PAID")
+    throw new Error("Only paid orders can be synced to Shiprocket.");
 
   if (!existing.shiprocketOrderId) {
     await prisma.order.update({
@@ -454,20 +567,10 @@ export async function resyncShiprocketOrder(orderId: string) {
     await createShiprocketOrderForOrder(orderId);
   } else if (existing.shiprocketShipmentId && !existing.awbTrackingNumber) {
     try {
-      const assigned = await shiprocketFetch("/courier/assign/awb", {
-        method: "POST",
-        body: JSON.stringify({ shipment_id: existing.shiprocketShipmentId }),
-      });
-      const assignment = assigned.response?.data ?? assigned.data ?? assigned;
-      await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          awbTrackingNumber: assignment.awb_code ?? assignment.awb ?? null,
-          courierName:
-            assignment.courier_name ?? assignment.courier_company_name ?? null,
-          shiprocketSyncError: null,
-        },
-      });
+      await assignShiprocketAwbAndPrepareShipment(
+        orderId,
+        existing.shiprocketShipmentId,
+      );
     } catch (error) {
       await prisma.order.update({
         where: { id: orderId },
@@ -479,6 +582,15 @@ export async function resyncShiprocketOrder(orderId: string) {
         },
       });
     }
+  } else if (
+    existing.shiprocketShipmentId &&
+    existing.awbTrackingNumber &&
+    (!existing.labelUrl || existing.shiprocketSyncError)
+  ) {
+    await generateShiprocketLabelAndPickup(
+      orderId,
+      existing.shiprocketShipmentId,
+    );
   }
   return prisma.order.findUnique({ where: { id: orderId } });
 }

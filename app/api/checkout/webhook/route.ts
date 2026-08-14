@@ -2,7 +2,10 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendOrderConfirmationEmail } from "@/lib/order-email";
-import { createShiprocketOrderForOrder } from "@/lib/shiprocket";
+import {
+  createShiprocketOrderForOrder,
+  resyncShiprocketOrder,
+} from "@/lib/shiprocket";
 export async function POST(request: Request) {
   const body = await request.text();
   const signature = request.headers.get("x-razorpay-signature") ?? "";
@@ -26,8 +29,18 @@ export async function POST(request: Request) {
     const payment = await prisma.payment.findFirst({
       where: { providerOrderId: orderId },
     });
-    if (!payment || payment.status === "PAID")
+    if (!payment) return NextResponse.json({ received: true });
+    if (payment.status === "PAID") {
+      try {
+        await resyncShiprocketOrder(payment.orderId);
+      } catch (error) {
+        console.error(
+          "[razorpay webhook] Shiprocket paid-order retry failed:",
+          error,
+        );
+      }
       return NextResponse.json({ received: true });
+    }
     const order = await prisma.$transaction(async (tx) => {
       await tx.payment.update({
         where: { id: payment.id },
@@ -77,14 +90,20 @@ export async function POST(request: Request) {
       }
       return updatedOrder;
     });
-    await sendOrderConfirmationEmail({
+    const emailDelivery = sendOrderConfirmationEmail({
       email: order.user.email,
       name: order.user.name,
       phone: order.user.phone,
       orderNumber: order.orderNumber,
       total: Number(order.total),
+    }).catch((error) => {
+      console.error(
+        "[razorpay webhook] Order confirmation email failed:",
+        error,
+      );
     });
     await createShiprocketOrderForOrder(order.id);
+    await emailDelivery;
     return NextResponse.json({ received: true });
   } catch {
     return NextResponse.json(
