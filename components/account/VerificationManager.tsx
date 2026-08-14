@@ -54,43 +54,53 @@ export function VerificationManager() {
     setEmailErr("");
     setEmailMsg("");
     setBusy(true);
-    const res = await fetch("/api/account/verify/email/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: emailInput }),
-    });
-    const data = await res.json();
-    setBusy(false);
-    if (!res.ok) {
-      setEmailErr(data.error ?? "Unable to send code.");
-      return;
+    try {
+      const res = await fetch("/api/account/verify/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailInput }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setEmailErr(data.error ?? "Unable to send code.");
+        return;
+      }
+      setEmailStep("code");
+      setEmailMsg(
+        data.data?.devCode
+          ? `Dev code: ${data.data.devCode}`
+          : "Verification code sent to your email.",
+      );
+    } catch {
+      setEmailErr("Network error. Please check your connection and try again.");
+    } finally {
+      setBusy(false);
     }
-    setEmailStep("code");
-    setEmailMsg(
-      data.data?.devCode
-        ? `Dev code: ${data.data.devCode}`
-        : "Verification code sent to your email.",
-    );
   };
 
   const confirmEmailCode = async () => {
     setEmailErr("");
     setBusy(true);
-    const res = await fetch("/api/account/verify/email/confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: emailCode }),
-    });
-    const data = await res.json();
-    setBusy(false);
-    if (!res.ok) {
-      setEmailErr(data.error ?? "Verification failed.");
-      return;
+    try {
+      const res = await fetch("/api/account/verify/email/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: emailCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setEmailErr(data.error ?? "Verification failed.");
+        return;
+      }
+      setEmailStep("idle");
+      setEmailCode("");
+      setEmailMsg("Email verified!");
+      void load();
+    } catch {
+      setEmailErr("Network error. Please check your connection and try again.");
+    } finally {
+      setBusy(false);
     }
-    setEmailStep("idle");
-    setEmailCode("");
-    setEmailMsg("Email verified!");
-    void load();
   };
 
   // ── Phone verification (Firebase) ──

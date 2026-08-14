@@ -50,13 +50,22 @@ export async function POST(request: Request) {
     },
   });
 
-  const result = await sendTransactionalEmail({
-    to: email,
-    subject: "Verify your email · Divine Karigari",
-    preheader: `Your verification code is ${code}`,
-    heading: "Confirm your email address",
-    body: `Your verification code is <strong style="font-size:22px;letter-spacing:3px">${code}</strong>. It expires in 10 minutes. If you didn't request this, you can safely ignore this email.`,
-  });
+  let result: { sent: boolean; reason?: string; id?: string };
+  try {
+    result = await sendTransactionalEmail({
+      to: email,
+      subject: "Verify your email · Divine Karigari",
+      preheader: `Your verification code is ${code}`,
+      heading: "Confirm your email address",
+      body: `Your verification code is <strong style="font-size:22px;letter-spacing:3px">${code}</strong>. It expires in 10 minutes. If you didn't request this, you can safely ignore this email.`,
+    });
+  } catch (error) {
+    console.error("[verify-email] send failed", error);
+    result = {
+      sent: false,
+      reason: error instanceof Error ? error.message : "Email provider error.",
+    };
+  }
 
   if (!result.sent) {
     // In dev without email configured, return the code so it can be tested
