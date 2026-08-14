@@ -89,7 +89,7 @@ export function PromoCarousel() {
             className="object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-ink/85 via-ink/45 to-transparent" />
-          <div className="relative flex h-full flex-col justify-center gap-4 p-8 sm:p-14 lg:p-20">
+          <div className="relative flex h-full flex-col justify-center gap-3 p-6 sm:gap-4 sm:p-14 lg:p-20">
             <span className="inline-flex w-fit items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-gold backdrop-blur-sm">
               <span className="h-1 w-1 rounded-full bg-gold" />
               {slide.eyebrow}
@@ -129,7 +129,7 @@ export function PromoCarousel() {
         <ArrowRight size={18} />
       </button>
 
-      <div className="absolute bottom-5 left-8 flex gap-2 sm:left-14 lg:left-20">
+      <div className="absolute bottom-4 left-6 flex gap-2 sm:bottom-5 sm:left-14 lg:left-20">
         {SLIDES.map((slide, i) => (
           <button
             key={slide.title}

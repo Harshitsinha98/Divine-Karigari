@@ -149,7 +149,7 @@ export function GiftBuilderStudio({
       <div className="grid gap-0 lg:grid-cols-[1.15fr_1fr]">
         {/* ─────────── 3D STAGE ─────────── */}
         <div
-          className="relative flex min-h-[360px] items-center justify-center overflow-hidden p-8"
+          className="relative flex min-h-[320px] items-center justify-center overflow-hidden p-5 sm:min-h-[360px] sm:p-8"
           style={{ perspective: "1100px" }}
         >
           <div className="pointer-events-none absolute inset-0 bg-gradient-radial from-gold/15 via-transparent to-transparent" />
@@ -272,11 +272,13 @@ export function GiftBuilderStudio({
           )}
 
           {/* live total badge */}
-          <div className="absolute right-6 top-6 rounded-soft-xl border border-sand-line bg-parchment/90 px-4 py-2 text-right shadow-soft backdrop-blur">
+          <div className="absolute right-4 top-4 rounded-soft-xl border border-sand-line bg-parchment/90 px-3 py-1.5 text-right shadow-soft backdrop-blur sm:right-6 sm:top-6 sm:px-4 sm:py-2">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-ink">
               Total
             </p>
-            <p className="font-display text-2xl leading-none">{inr(total)}</p>
+            <p className="font-display text-xl leading-none sm:text-2xl">
+              {inr(total)}
+            </p>
           </div>
         </div>
 
