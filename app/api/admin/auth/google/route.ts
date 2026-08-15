@@ -17,7 +17,9 @@ export async function GET(request: Request) {
     );
   }
 
-  const redirectTo = `${appUrl}/api/admin/auth/google/callback?next=${encodeURIComponent(next)}`;
+  // Use the same callback path that's already in Supabase's redirect allowlist,
+  // with an admin=1 flag to distinguish from customer sign-in.
+  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(next)}&admin=1`;
 
   const authorizeUrl = new URL(`${supabaseUrl}/auth/v1/authorize`);
   authorizeUrl.searchParams.set("provider", "google");

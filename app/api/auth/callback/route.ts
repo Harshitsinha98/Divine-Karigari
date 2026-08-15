@@ -2,11 +2,17 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import { setSessionCookie } from "@/lib/auth";
+import { setAdminSessionCookie } from "@/lib/admin-auth";
+
+const SUPER_ADMIN_EMAIL = (
+  process.env.ADMIN_GOOGLE_EMAIL ?? "divinekarigari@gmail.com"
+).toLowerCase();
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/account";
+  const isAdminFlow = searchParams.get("admin") === "1";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? origin;
 
   if (!code) {
@@ -44,13 +50,14 @@ export async function GET(request: Request) {
       }
 
       // Use fallback user data
-      return await handleUser(userData.user, next, appUrl);
+      return await handleUser(userData.user, next, appUrl, isAdminFlow);
     }
 
-    return await handleUser(sessionData.user, next, appUrl);
+    return await handleUser(sessionData.user, next, appUrl, isAdminFlow);
   } catch (err) {
     console.error("[auth-callback] Unexpected error:", err);
-    return NextResponse.redirect(new URL(`/login?error=server_error`, appUrl));
+    const errorRedirect = isAdminFlow ? "/admin/login?error=auth_failed" : "/login?error=server_error";
+    return NextResponse.redirect(new URL(errorRedirect, appUrl));
   }
 }
 
@@ -58,6 +65,7 @@ async function handleUser(
   supabaseUser: { email?: string; user_metadata?: Record<string, unknown> },
   next: string,
   appUrl: string,
+  isAdminFlow = false,
 ) {
   const email =
     supabaseUser.email ??
@@ -68,8 +76,18 @@ async function handleUser(
 
   if (!email) {
     console.error("[auth-callback] No email from provider");
-    return NextResponse.redirect(new URL(`/login?error=no_email`, appUrl));
+    const errorRedirect = isAdminFlow ? "/admin/login?error=no_email" : "/login?error=no_email";
+    return NextResponse.redirect(new URL(errorRedirect, appUrl));
   }
+
+  const normalizedEmail = email.toLowerCase();
+
+  // ── ADMIN FLOW: authenticate as staff ──
+  if (isAdminFlow) {
+    return handleAdminUser(normalizedEmail, name ?? email.split("@")[0], next, appUrl);
+  }
+
+  // ── CUSTOMER FLOW (existing) ──
 
   // Find or create user in our database
   let user = await prisma.user.findUnique({
@@ -103,6 +121,105 @@ async function handleUser(
     id: user.id,
     email: user.email,
     role: user.role,
+  });
+  return response;
+}
+
+
+
+// ── Admin Google OAuth handler ──
+async function handleAdminUser(
+  email: string,
+  name: string,
+  next: string,
+  appUrl: string,
+) {
+  // Auto-provision SUPER_ADMIN for the designated email
+  if (email === SUPER_ADMIN_EMAIL) {
+    let user = await prisma.user.findUnique({
+      where: { email },
+      include: { staffProfile: true },
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          name,
+          authProvider: "google",
+          emailVerified: true,
+          role: "STAFF",
+          staffProfile: { create: { role: "SUPER_ADMIN", active: true } },
+        },
+        include: { staffProfile: true },
+      });
+    } else if (user.role !== "STAFF" || !user.staffProfile) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: "STAFF" },
+      });
+      if (!user.staffProfile) {
+        await prisma.staff.create({
+          data: { userId: user.id, role: "SUPER_ADMIN", active: true },
+        });
+      }
+      user = await prisma.user.findUnique({
+        where: { email },
+        include: { staffProfile: true },
+      });
+    } else if (!user.staffProfile.active) {
+      await prisma.staff.update({
+        where: { id: user.staffProfile.id },
+        data: { active: true },
+      });
+      user = await prisma.user.findUnique({
+        where: { email },
+        include: { staffProfile: true },
+      });
+    }
+
+    if (!user?.staffProfile) {
+      return NextResponse.redirect(
+        new URL("/admin/login?error=setup_failed", appUrl),
+      );
+    }
+
+    const response = NextResponse.redirect(new URL(next, appUrl));
+    await setAdminSessionCookie(response, {
+      id: user.id,
+      email: user.email,
+      staffId: user.staffProfile.id,
+      role: user.staffProfile.role,
+    });
+    return response;
+  }
+
+  // For all other emails: must be an existing active staff member
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: { staffProfile: true },
+  });
+
+  if (
+    !user ||
+    user.role !== "STAFF" ||
+    !user.staffProfile ||
+    !user.staffProfile.active
+  ) {
+    console.warn(
+      `[admin-google-callback] Rejected: ${email} — not a registered active staff member.`,
+    );
+    return NextResponse.redirect(
+      new URL("/admin/login?error=not_authorized", appUrl),
+    );
+  }
+
+  const response = NextResponse.redirect(new URL(next, appUrl));
+  await setAdminSessionCookie(response, {
+    id: user.id,
+    email: user.email,
+    staffId: user.staffProfile.id,
+    role: user.staffProfile.role,
   });
   return response;
 }

@@ -124,7 +124,8 @@ export function AdminLoginForm({ nextPath }: { nextPath?: string }) {
         Sign in with Google
       </a>
       <p className="mt-3 text-center text-[11px] text-muted-ink">
-        Google sign-in is restricted to the authorized admin account only.
+        Any registered staff member can sign in with their Google account.
+        Contact the admin to get access.
       </p>
     </form>
   );

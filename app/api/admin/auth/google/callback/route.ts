@@ -3,8 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import { setAdminSessionCookie } from "@/lib/admin-auth";
 
-// Only this email is allowed to sign in as admin via Google OAuth.
-const ALLOWED_ADMIN_EMAIL = (
+// This email is auto-provisioned as SUPER_ADMIN on first Google sign-in.
+// All other emails must already exist as active Staff in the database
+// (added by SUPER_ADMIN via Admin → Staff page).
+const SUPER_ADMIN_EMAIL = (
   process.env.ADMIN_GOOGLE_EMAIL ?? "divinekarigari@gmail.com"
 ).toLowerCase();
 
@@ -17,6 +19,9 @@ export async function GET(request: Request) {
     process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
 
   if (!code) {
+    // Supabase sometimes returns the token in a hash fragment which the server
+    // cannot read. Redirect to a client page that extracts it and retries.
+    console.error("[admin-google-callback] No code parameter received.");
     return NextResponse.redirect(
       new URL("/admin/login?error=no_code", appUrl),
     );
@@ -31,100 +36,129 @@ export async function GET(request: Request) {
     );
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-  // Exchange the authorization code for user info
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error || !data.user?.email) {
-    console.error("[admin-google-callback] Exchange failed:", error);
-    return NextResponse.redirect(
-      new URL("/admin/login?error=auth_failed", appUrl),
-    );
-  }
-
-  const email = data.user.email.toLowerCase();
-
-  // Strict email check — only the designated admin email is allowed
-  if (email !== ALLOWED_ADMIN_EMAIL) {
-    console.warn(
-      `[admin-google-callback] Rejected login attempt from: ${email}`,
-    );
-    return NextResponse.redirect(
-      new URL("/admin/login?error=not_authorized", appUrl),
-    );
-  }
-
-  // Find the corresponding User + Staff profile
-  const user = await prisma.user.findUnique({
-    where: { email },
-    include: { staffProfile: true },
-  });
-
-  if (!user || user.role !== "STAFF" || !user.staffProfile?.active) {
-    // Auto-create/promote if the user exists but isn't staff yet,
-    // OR create from scratch for the designated admin email.
-    let staffUser = user;
-    if (!staffUser) {
-      staffUser = await prisma.user.create({
-        data: {
-          email,
-          name: data.user.user_metadata?.full_name ?? "Admin",
-          authProvider: "google",
-          emailVerified: true,
-          role: "STAFF",
-          staffProfile: { create: { role: "SUPER_ADMIN", active: true } },
-        },
-        include: { staffProfile: true },
-      });
-    } else if (!staffUser.staffProfile) {
-      await prisma.user.update({
-        where: { id: staffUser.id },
-        data: { role: "STAFF" },
-      });
-      const profile = await prisma.staff.create({
-        data: { userId: staffUser.id, role: "SUPER_ADMIN", active: true },
-      });
-      staffUser = {
-        ...staffUser,
-        role: "STAFF",
-        staffProfile: profile,
-      } as typeof staffUser;
-    } else if (!staffUser.staffProfile.active) {
-      await prisma.staff.update({
-        where: { id: staffUser.staffProfile.id },
-        data: { active: true },
-      });
-      staffUser = {
-        ...staffUser,
-        staffProfile: { ...staffUser.staffProfile, active: true },
-      };
+    // Exchange the authorization code for user info
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error || !data.user?.email) {
+      console.error("[admin-google-callback] Exchange failed:", error?.message);
+      return NextResponse.redirect(
+        new URL("/admin/login?error=auth_failed", appUrl),
+      );
     }
 
-    if (!staffUser?.staffProfile) {
+    const email = data.user.email.toLowerCase();
+    const displayName =
+      data.user.user_metadata?.full_name ??
+      data.user.user_metadata?.name ??
+      email.split("@")[0];
+
+    // ── SUPER_ADMIN auto-provisioning ──
+    if (email === SUPER_ADMIN_EMAIL) {
+      const staffUser = await ensureSuperAdmin(email, String(displayName));
+      if (!staffUser) {
+        return NextResponse.redirect(
+          new URL("/admin/login?error=setup_failed", appUrl),
+        );
+      }
+      const response = NextResponse.redirect(new URL(next, appUrl));
+      await setAdminSessionCookie(response, {
+        id: staffUser.id,
+        email: staffUser.email,
+        staffId: staffUser.staffId,
+        role: staffUser.role,
+      });
+      return response;
+    }
+
+    // ── Staff members: must already exist with an active Staff profile ──
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { staffProfile: true },
+    });
+
+    if (
+      !user ||
+      user.role !== "STAFF" ||
+      !user.staffProfile ||
+      !user.staffProfile.active
+    ) {
+      console.warn(
+        `[admin-google-callback] Rejected: ${email} — not a registered active staff member.`,
+      );
       return NextResponse.redirect(
-        new URL("/admin/login?error=setup_failed", appUrl),
+        new URL("/admin/login?error=not_authorized", appUrl),
       );
     }
 
     const response = NextResponse.redirect(new URL(next, appUrl));
     await setAdminSessionCookie(response, {
-      id: staffUser.id,
-      email: staffUser.email,
-      staffId: staffUser.staffProfile.id,
-      role: staffUser.staffProfile.role,
+      id: user.id,
+      email: user.email,
+      staffId: user.staffProfile.id,
+      role: user.staffProfile.role,
     });
     return response;
+  } catch (err) {
+    console.error("[admin-google-callback] Unexpected error:", err);
+    return NextResponse.redirect(
+      new URL("/admin/login?error=auth_failed", appUrl),
+    );
+  }
+}
+
+// Ensures the super admin email has a User + Staff(SUPER_ADMIN) profile.
+async function ensureSuperAdmin(email: string, name: string) {
+  let user = await prisma.user.findUnique({
+    where: { email },
+    include: { staffProfile: true },
+  });
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email,
+        name,
+        authProvider: "google",
+        emailVerified: true,
+        role: "STAFF",
+        staffProfile: { create: { role: "SUPER_ADMIN", active: true } },
+      },
+      include: { staffProfile: true },
+    });
+  } else if (user.role !== "STAFF" || !user.staffProfile) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { role: "STAFF", name: name || user.name },
+    });
+    if (!user.staffProfile) {
+      await prisma.staff.create({
+        data: { userId: user.id, role: "SUPER_ADMIN", active: true },
+      });
+    }
+    user = await prisma.user.findUnique({
+      where: { email },
+      include: { staffProfile: true },
+    });
+  } else if (!user.staffProfile.active) {
+    await prisma.staff.update({
+      where: { id: user.staffProfile.id },
+      data: { active: true, role: "SUPER_ADMIN" },
+    });
+    user = await prisma.user.findUnique({
+      where: { email },
+      include: { staffProfile: true },
+    });
   }
 
-  // User exists and is an active staff member
-  const response = NextResponse.redirect(new URL(next, appUrl));
-  await setAdminSessionCookie(response, {
+  if (!user?.staffProfile) return null;
+  return {
     id: user.id,
     email: user.email,
     staffId: user.staffProfile.id,
     role: user.staffProfile.role,
-  });
-  return response;
+  };
 }
