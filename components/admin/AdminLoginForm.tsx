@@ -99,8 +99,12 @@ export function AdminLoginForm({ nextPath }: { nextPath?: string }) {
         </div>
       </div>
 
-      <a
-        href={`/api/admin/auth/google${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`}
+      <button
+        type="button"
+        onClick={() => {
+          window.sessionStorage.setItem("dk_oauth_admin", "1");
+          window.location.href = `/api/admin/auth/google${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`;
+        }}
         className="flex w-full items-center justify-center gap-3 rounded-soft border border-sand-line bg-white py-3 text-sm font-medium text-ink shadow-soft transition hover:shadow-lift"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5">
@@ -122,7 +126,7 @@ export function AdminLoginForm({ nextPath }: { nextPath?: string }) {
           />
         </svg>
         Sign in with Google
-      </a>
+      </button>
       <p className="mt-3 text-center text-[11px] text-muted-ink">
         Any registered staff member can sign in with their Google account.
         Contact the admin to get access.

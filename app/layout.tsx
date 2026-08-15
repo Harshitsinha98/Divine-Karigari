@@ -4,6 +4,7 @@ import "@/styles/globals.css";
 import { SiteChrome } from "@/components/layout/SiteChrome";
 import { CommerceProvider } from "@/components/commerce/CommerceProvider";
 import { Analytics } from "@/components/analytics/Analytics";
+import { OAuthHashHandler } from "@/components/auth/OAuthHashHandler";
 import { siteDescription, siteName, siteUrl } from "@/lib/seo";
 
 const fraunces = Fraunces({
@@ -45,6 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${fraunces.variable} ${inter.variable}`}>
       <body>
+        <OAuthHashHandler />
         <CommerceProvider>
           <SiteChrome>{children}</SiteChrome>
           <Analytics />
