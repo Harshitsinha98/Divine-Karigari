@@ -17,9 +17,9 @@ export async function GET(request: Request) {
     );
   }
 
-  // Use the same callback path that's already in Supabase's redirect allowlist,
-  // with an admin=1 flag to distinguish from customer sign-in.
-  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(next)}&admin=1`;
+  // Encode admin intent directly in the redirect URL path (not query params)
+  // because Supabase strips custom query params during the OAuth flow.
+  const redirectTo = `${appUrl}/auth/callback/admin?next=${encodeURIComponent(next)}`;
 
   const authorizeUrl = new URL(`${supabaseUrl}/auth/v1/authorize`);
   authorizeUrl.searchParams.set("provider", "google");
