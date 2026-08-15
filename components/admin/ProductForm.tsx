@@ -216,13 +216,25 @@ export function ProductForm({ product }: { product?: Product }) {
             )}
           </section>
           <section className="rounded-soft-xl border border-sand-line bg-parchment p-5">
-            <h2 className="font-display text-2xl">Shipping metrics</h2>
+            <h2 className="font-display text-2xl">
+              Shipping metrics{" "}
+              <span className="text-xs font-normal text-oxblood">
+                (required for Shiprocket)
+              </span>
+            </h2>
+            <p className="mt-1 text-xs text-muted-ink">
+              Packed dimensions of the product. Shiprocket charges the higher of
+              actual weight vs volumetric weight (L×W×H÷5000).
+            </p>
             <div className="mt-4 grid grid-cols-2 gap-4">
-              {text("weightGrams", "Weight (g)", "number")}
-              {text("lengthCm", "Length (cm)", "number")}
-              {text("widthCm", "Width (cm)", "number")}
-              {text("heightCm", "Height (cm)", "number")}
+              {text("weightGrams", "Weight (g) *", "number")}
+              {text("lengthCm", "Length (cm) *", "number")}
+              {text("widthCm", "Width (cm) *", "number")}
+              {text("heightCm", "Height (cm) *", "number")}
             </div>
+            {product?.id && (
+              <ShippingEstimate productId={product.id as string} />
+            )}
           </section>
         </aside>
       </div>
@@ -289,5 +301,73 @@ export function ProductForm({ product }: { product?: Product }) {
         </div>
       </section>
     </form>
+  );
+}
+
+
+function ShippingEstimate({ productId }: { productId: string }) {
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const load = async () => {
+    setLoading(true);
+    setErr("");
+    try {
+      const res = await fetch(
+        `/api/admin/products/${productId}/shipping-estimate`,
+      );
+      const json = await res.json();
+      if (!res.ok) return setErr(json.error ?? "Unable to fetch estimate.");
+      setData(json.data);
+    } catch {
+      setErr("Network error.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div className="mt-4 rounded-soft border border-tulsi/20 bg-tulsi/5 p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-tulsi">Shipping estimate</p>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          className="text-xs font-medium text-tulsi underline disabled:opacity-50"
+        >
+          {loading ? "Loading…" : "Fetch from Shiprocket"}
+        </button>
+      </div>
+      {err && <p className="mt-2 text-xs text-oxblood">{err}</p>}
+      {data && !err && (
+        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink">
+          <span>Test pincode:</span>
+          <span>{String(data.testPincode)}</span>
+          <span>Actual weight:</span>
+          <span>{String(data.actualKg)} kg</span>
+          <span>Volumetric weight:</span>
+          <span>{String(data.volumetricKg)} kg</span>
+          <span>Chargeable weight:</span>
+          <span className="font-medium">
+            {String(data.chargeableKg)} kg
+          </span>
+          <span>Courier:</span>
+          <span>{String(data.courierName ?? "—")}</span>
+          <span>Est. rate:</span>
+          <span className="font-medium">
+            {data.rate ? `₹${Number(data.rate).toLocaleString("en-IN")}` : "—"}
+          </span>
+          <span>Delivery days:</span>
+          <span>{data.estimatedDays ? `${data.estimatedDays} days` : "—"}</span>
+          {data.available === false && (
+            <>
+              <span className="col-span-2 mt-1 text-oxblood">
+                {String(data.reason ?? "Delivery not available to test pincode.")}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

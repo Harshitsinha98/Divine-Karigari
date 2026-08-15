@@ -2,6 +2,7 @@ import { z } from "zod";
 import { sanitizeText } from "@/lib/sanitize";
 
 const decimalField = z.number().nonnegative();
+const positiveDecimal = z.number().positive();
 const clean = (minimum: number, maximum: number) =>
   z
     .string()
@@ -38,10 +39,10 @@ export const productInputSchema = z.object({
   customizationLabel: optionalClean(160),
   customizationMaxLength: z.number().int().positive().max(500).optional(),
   stock: z.number().int().nonnegative().default(0),
-  weightGrams: z.number().int().positive().optional(),
-  lengthCm: decimalField.optional(),
-  widthCm: decimalField.optional(),
-  heightCm: decimalField.optional(),
+  weightGrams: z.number().int().positive(),
+  lengthCm: positiveDecimal,
+  widthCm: positiveDecimal,
+  heightCm: positiveDecimal,
   variants: z
     .array(
       z.object({

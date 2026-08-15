@@ -105,7 +105,7 @@ export function AdminShell({
     router.refresh();
   };
   return (
-    <div className="min-h-screen bg-[#efe4cd] text-ink">
+    <div className="min-h-screen bg-cream text-ink">
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-64 overflow-y-auto border-r border-sand-line bg-parchment p-5 pb-28 transition-transform lg:translate-x-0",
