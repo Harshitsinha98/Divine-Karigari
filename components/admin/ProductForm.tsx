@@ -75,12 +75,36 @@ export function ProductForm({ product }: { product?: Product }) {
     event.preventDefault();
     setSaving(true);
     setError("");
+    // Ensure numeric fields are numbers (Prisma returns Decimal as string)
+    const payload = {
+      ...value,
+      price: Number(value.price) || 0,
+      compareAtPrice: value.compareAtPrice
+        ? Number(value.compareAtPrice)
+        : undefined,
+      stock: Number(value.stock) || 0,
+      weightGrams: Number(value.weightGrams) || 300,
+      lengthCm: Number(value.lengthCm) || 10,
+      widthCm: Number(value.widthCm) || 10,
+      heightCm: Number(value.heightCm) || 5,
+      customizationMaxLength: value.customizationMaxLength
+        ? Number(value.customizationMaxLength)
+        : undefined,
+      variants: (value.variants ?? []).map((v) => ({
+        ...v,
+        price:
+          v.price != null && String(v.price) !== ""
+            ? Number(v.price)
+            : undefined,
+        stock: Number(v.stock) || 0,
+      })),
+    };
     const response = await fetch(
       product?.id ? `/api/admin/products/${product.id}` : "/api/admin/products",
       {
         method: product?.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(value),
+        body: JSON.stringify(payload),
       },
     );
     const result = await response.json();
