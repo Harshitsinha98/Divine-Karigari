@@ -6,7 +6,13 @@ import { Minus, Plus, Trash2, X } from "lucide-react";
 import { useCommerce } from "@/components/commerce/CommerceProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { BUILDER_CART_LABEL, guessEmoji } from "@/lib/builder";
+import {
+  BUILDER_CART_LABEL,
+  BUILDER_DISCLAIMER,
+  guessEmoji,
+  type BuilderType,
+} from "@/lib/builder";
+import { BUILDER_SCENES } from "@/lib/builderScenes";
 
 type CartLine = {
   key: string;
@@ -76,6 +82,7 @@ export function CartDrawer() {
                     key={id}
                     title={title}
                     emoji={emoji}
+                    mode={id}
                     items={groupItems}
                     onRemove={removeFromCart}
                   />
@@ -202,11 +209,13 @@ export function CartDrawer() {
 function GiftGroupCard({
   title,
   emoji,
+  mode,
   items,
   onRemove,
 }: {
   title: string;
   emoji: string;
+  mode: BuilderType;
   items: CartLine[];
   onRemove: (key: string) => void;
 }) {
@@ -214,51 +223,53 @@ function GiftGroupCard({
   const count = items.reduce((s, i) => s + i.quantity, 0);
   return (
     <div className="border-b border-sand-line py-4 first:pt-0">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{emoji}</span>
-          <div>
-            <p className="font-display text-lg leading-tight">{title}</p>
-            <p className="text-xs text-muted-ink">
-              {count} item{count > 1 ? "s" : ""}
-            </p>
-          </div>
+      <div className="flex gap-4">
+        <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-soft border border-sand-line bg-white">
+          <Image
+            src={BUILDER_SCENES[mode].image}
+            alt={title}
+            fill
+            sizes="80px"
+            className="object-contain"
+          />
         </div>
-        <button
-          onClick={() => items.forEach((i) => onRemove(i.key))}
-          aria-label={`Remove ${title}`}
-          className="text-muted-ink hover:text-oxblood"
-        >
-          <Trash2 size={15} />
-        </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="font-display text-lg leading-tight">
+              {emoji} {title}
+            </p>
+            <button
+              onClick={() => items.forEach((i) => onRemove(i.key))}
+              aria-label={`Remove ${title}`}
+              className="text-muted-ink hover:text-oxblood"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+          <p className="text-xs text-muted-ink">
+            {count} item{count > 1 ? "s" : ""}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {items.map((i) => (
+              <span
+                key={i.key}
+                className="inline-flex items-center gap-1 rounded-full border border-sand-line bg-cream px-2 py-0.5 text-[11px]"
+              >
+                <span>{guessEmoji(i.name)}</span>
+                <span className="max-w-[90px] truncate">{i.name}</span>
+                {i.quantity > 1 && (
+                  <span className="text-muted-ink">×{i.quantity}</span>
+                )}
+              </span>
+            ))}
+          </div>
+          <p className="mt-2 text-sm font-medium">
+            ₹{total.toLocaleString("en-IN")}
+          </p>
+        </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {items.map((i) => (
-          <span
-            key={i.key}
-            className="inline-flex items-center gap-1.5 rounded-full border border-sand-line bg-cream px-2 py-1 text-xs"
-          >
-            <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-white">
-              {i.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={i.image}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span className="text-[11px]">{guessEmoji(i.name)}</span>
-              )}
-            </span>
-            <span className="max-w-[110px] truncate">{i.name}</span>
-            {i.quantity > 1 && (
-              <span className="text-muted-ink">×{i.quantity}</span>
-            )}
-          </span>
-        ))}
-      </div>
-      <p className="mt-3 text-right text-sm">
-        ₹{total.toLocaleString("en-IN")}
+      <p className="mt-2 text-[10px] leading-snug text-muted-ink">
+        {BUILDER_DISCLAIMER}
       </p>
     </div>
   );

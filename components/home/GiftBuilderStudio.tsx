@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import { Flower2, Gift, Minus, Plus, ShoppingBag, Sparkles } from "lucide-react";
 import { useCommerce } from "@/components/commerce/CommerceProvider";
 import type { CatalogProduct } from "@/components/home/ProductCard";
@@ -11,7 +10,6 @@ import {
   guessEmoji,
   type BuilderType,
 } from "@/lib/builder";
-import { BUILDER_SCENES } from "@/lib/builderScenes";
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
@@ -48,7 +46,6 @@ export function GiftBuilderStudio({
   const [picks, setPicks] = useState<Record<string, number>>({});
 
   const items = mode === "bouquet" ? bouquetItems : giftboxItems;
-  const capacity = BUILDER_SCENES[mode].slots.length;
   const selected = useMemo(
     () => items.filter((item) => (picks[item.id] ?? 0) > 0),
     [items, picks],
@@ -58,7 +55,6 @@ export function GiftBuilderStudio({
     0,
   );
   const count = selected.reduce((sum, item) => sum + picks[item.id], 0);
-  const atCapacity = selected.length >= capacity;
 
   const switchMode = (next: BuilderType) => {
     if (next === mode) return;
@@ -66,11 +62,7 @@ export function GiftBuilderStudio({
     setPicks({});
   };
   const add = (id: string) =>
-    setPicks((p) => {
-      const cur = p[id] ?? 0;
-      if (cur === 0 && Object.keys(p).length >= capacity) return p;
-      return { ...p, [id]: Math.min(20, cur + 1) };
-    });
+    setPicks((p) => ({ ...p, [id]: Math.min(20, (p[id] ?? 0) + 1) }));
   const dec = (id: string) =>
     setPicks((p) => {
       const q = (p[id] ?? 0) - 1;
@@ -151,7 +143,7 @@ export function GiftBuilderStudio({
       <div className="grid gap-0 lg:grid-cols-[1.05fr_1fr]">
         {/* ─────────── PHOTO COMPOSITE STAGE ─────────── */}
         <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden bg-gradient-radial from-gold/10 via-transparent to-transparent p-5 sm:p-8">
-          <GiftComposite mode={mode} selected={selected} picks={picks} />
+          <GiftComposite mode={mode} count={count} />
           <div className="absolute right-4 top-4 rounded-soft-xl border border-sand-line bg-parchment/90 px-3 py-1.5 text-right shadow-soft backdrop-blur sm:right-6 sm:top-6 sm:px-4 sm:py-2">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-ink">
               Total
@@ -168,21 +160,16 @@ export function GiftBuilderStudio({
             <h3 className="font-display text-xl">
               Choose your {isBouquet ? "blooms & add-ons" : "gift box items"}
             </h3>
-            <span className="text-xs text-muted-ink">
-              {selected.length}/{capacity}
-            </span>
+            <span className="text-xs text-muted-ink">{count} selected</span>
           </div>
 
           <div className="mt-4 max-h-[320px] space-y-2.5 overflow-y-auto pr-1">
             {items.map((item) => {
               const q = picks[item.id] ?? 0;
-              const blocked = q === 0 && atCapacity;
               return (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-3 rounded-soft-xl border border-sand-line bg-parchment p-2.5 ${
-                    blocked ? "opacity-50" : ""
-                  }`}
+                  className="flex items-center gap-3 rounded-soft-xl border border-sand-line bg-parchment p-2.5"
                 >
                   <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-soft bg-cream">
                     <Thumb item={item} />
@@ -216,8 +203,7 @@ export function GiftBuilderStudio({
                   ) : (
                     <button
                       onClick={() => add(item.id)}
-                      disabled={blocked}
-                      className="inline-flex items-center gap-1 rounded-full bg-ink px-3.5 py-2 text-xs font-medium text-parchment transition hover:bg-ink/90 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-1 rounded-full bg-ink px-3.5 py-2 text-xs font-medium text-parchment transition hover:bg-ink/90"
                     >
                       <Plus size={13} /> Add
                     </button>
@@ -226,13 +212,6 @@ export function GiftBuilderStudio({
               );
             })}
           </div>
-
-          {atCapacity && (
-            <p className="mt-3 text-xs text-oxblood">
-              {isBouquet ? "Bouquet" : "Gift box"} is full — remove an item to
-              swap.
-            </p>
-          )}
 
           <div className="mt-5 flex items-center justify-between gap-4 border-t border-sand-line/70 pt-5">
             <div>

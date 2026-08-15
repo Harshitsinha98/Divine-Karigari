@@ -22,6 +22,10 @@ export const BUILDER_CART_LABEL: Record<BuilderType, string> = {
   giftbox: "🎁 Custom Gift Box",
 };
 
+// Shown in the builder and the cart, professionally worded.
+export const BUILDER_DISCLAIMER =
+  "The image is shown for illustration purposes only and the actual product may vary. You will receive exactly the items and quantities you select.";
+
 // Fallback / starter items shown until an admin configures their own.
 export const STARTER_BUILDER_ITEMS: {
   name: string;
@@ -29,21 +33,16 @@ export const STARTER_BUILDER_ITEMS: {
   emoji: string;
   types: BuilderType[];
 }[] = [
-  { name: "Teddy Bear", price: 349, emoji: "🧸", types: ["bouquet", "giftbox"] },
-  {
-    name: "Chocolate Box",
-    price: 249,
-    emoji: "🍫",
-    types: ["bouquet", "giftbox"],
-  },
-  { name: "Premium Pen", price: 199, emoji: "🖊️", types: ["giftbox"] },
-  { name: "Hair Clutcher", price: 129, emoji: "🎀", types: ["giftbox"] },
-  {
-    name: "Silk Scrunchy",
-    price: 99,
-    emoji: "💗",
-    types: ["bouquet", "giftbox"],
-  },
+  { name: "Teddy Bear", price: 149, emoji: "🧸", types: ["bouquet", "giftbox"] },
+  { name: "Cadbury Gems", price: 30, emoji: "🍫", types: ["bouquet", "giftbox"] },
+  { name: "Chocolate Bar", price: 60, emoji: "🍫", types: ["bouquet", "giftbox"] },
+  { name: "Candy Pack", price: 40, emoji: "🍬", types: ["bouquet", "giftbox"] },
+  { name: "Vaseline Lip Care", price: 99, emoji: "🧴", types: ["bouquet", "giftbox"] },
+  { name: "Nail Polish", price: 120, emoji: "💅", types: ["bouquet", "giftbox"] },
+  { name: "Earrings", price: 199, emoji: "💎", types: ["bouquet", "giftbox"] },
+  { name: "Silk Scrunchy", price: 79, emoji: "💗", types: ["bouquet", "giftbox"] },
+  { name: "Hair Clutcher", price: 99, emoji: "🎀", types: ["bouquet", "giftbox"] },
+  { name: "Premium Pen", price: 149, emoji: "🖊️", types: ["bouquet", "giftbox"] },
 ];
 
 export function builderSlugify(name: string): string {
@@ -59,7 +58,15 @@ const EMOJI_MAP: Record<string, string> = {
   bear: "🧸",
   chocolate: "🍫",
   choco: "🍫",
+  gems: "🍫",
   candy: "🍬",
+  toffee: "🍬",
+  vaseline: "🧴",
+  lip: "🧴",
+  balm: "🧴",
+  nail: "💅",
+  polish: "💅",
+  stud: "💎",
   pen: "🖊️",
   clutcher: "🎀",
   clip: "🎀",
