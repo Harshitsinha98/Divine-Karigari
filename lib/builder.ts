@@ -16,6 +16,12 @@ export const BUILDER_TAG = {
 
 export type BuilderType = "bouquet" | "giftbox";
 
+// Cart line label used to group a custom creation as a single item.
+export const BUILDER_CART_LABEL: Record<BuilderType, string> = {
+  bouquet: "💐 Custom Bouquet",
+  giftbox: "🎁 Custom Gift Box",
+};
+
 // Fallback / starter items shown until an admin configures their own.
 export const STARTER_BUILDER_ITEMS: {
   name: string;

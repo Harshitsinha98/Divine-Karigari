@@ -6,6 +6,18 @@ import { Minus, Plus, Trash2, X } from "lucide-react";
 import { useCommerce } from "@/components/commerce/CommerceProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { BUILDER_CART_LABEL, guessEmoji } from "@/lib/builder";
+
+type CartLine = {
+  key: string;
+  name: string;
+  slug: string;
+  image: string;
+  price: number;
+  quantity: number;
+  variantLabel?: string;
+  customization?: string;
+};
 
 export function CartDrawer() {
   const {
@@ -49,20 +61,52 @@ export function CartDrawer() {
         {cart.length ? (
           <>
             <div className="flex-1 overflow-y-auto px-5 py-5">
-              {cart.map((item) => (
-                <div
-                  key={item.key}
-                  className="flex gap-4 border-b border-sand-line py-4 first:pt-0"
-                >
-                  <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-soft bg-sand-line/30">
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      sizes="80px"
-                      className="object-cover"
-                    />
-                  </div>
+              {(
+                [
+                  ["bouquet", BUILDER_CART_LABEL.bouquet, "Custom Bouquet", "💐"],
+                  ["giftbox", BUILDER_CART_LABEL.giftbox, "Custom Gift Box", "🎁"],
+                ] as const
+              ).map(([id, label, title, emoji]) => {
+                const groupItems = (cart as CartLine[]).filter(
+                  (item) => item.customization === label,
+                );
+                if (!groupItems.length) return null;
+                return (
+                  <GiftGroupCard
+                    key={id}
+                    title={title}
+                    emoji={emoji}
+                    items={groupItems}
+                    onRemove={removeFromCart}
+                  />
+                );
+              })}
+              {(cart as CartLine[])
+                .filter(
+                  (item) =>
+                    item.customization !== BUILDER_CART_LABEL.bouquet &&
+                    item.customization !== BUILDER_CART_LABEL.giftbox,
+                )
+                .map((item) => (
+                  <div
+                    key={item.key}
+                    className="flex gap-4 border-b border-sand-line py-4 first:pt-0"
+                  >
+                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-soft bg-sand-line/30">
+                      {item.image ? (
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-2xl">
+                          {guessEmoji(item.name)}
+                        </span>
+                      )}
+                    </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <Link
@@ -151,6 +195,71 @@ export function CartDrawer() {
           </div>
         )}
       </aside>
+    </div>
+  );
+}
+
+function GiftGroupCard({
+  title,
+  emoji,
+  items,
+  onRemove,
+}: {
+  title: string;
+  emoji: string;
+  items: CartLine[];
+  onRemove: (key: string) => void;
+}) {
+  const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const count = items.reduce((s, i) => s + i.quantity, 0);
+  return (
+    <div className="border-b border-sand-line py-4 first:pt-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">{emoji}</span>
+          <div>
+            <p className="font-display text-lg leading-tight">{title}</p>
+            <p className="text-xs text-muted-ink">
+              {count} item{count > 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => items.forEach((i) => onRemove(i.key))}
+          aria-label={`Remove ${title}`}
+          className="text-muted-ink hover:text-oxblood"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {items.map((i) => (
+          <span
+            key={i.key}
+            className="inline-flex items-center gap-1.5 rounded-full border border-sand-line bg-cream px-2 py-1 text-xs"
+          >
+            <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-white">
+              {i.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={i.image}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-[11px]">{guessEmoji(i.name)}</span>
+              )}
+            </span>
+            <span className="max-w-[110px] truncate">{i.name}</span>
+            {i.quantity > 1 && (
+              <span className="text-muted-ink">×{i.quantity}</span>
+            )}
+          </span>
+        ))}
+      </div>
+      <p className="mt-3 text-right text-sm">
+        ₹{total.toLocaleString("en-IN")}
+      </p>
     </div>
   );
 }
