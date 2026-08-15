@@ -5,10 +5,10 @@ const img = (seed: string) =>
   `https://images.unsplash.com/${seed}?auto=format&fit=crop&w=600&q=80`;
 
 const items: { label: string; href: string; seed: string }[] = [
-  { label: "Birthday Gifts", href: "/shop?occasion=birthdays", seed: "photo-1599552683573-16b443d7a6a3" },
-  { label: "Anniversary Gifts", href: "/shop?occasion=for-couples", seed: "photo-1600607687939-ce8a6c25118c" },
-  { label: "Gifts for Him", href: "/shop?occasion=for-him", seed: "photo-1604014237800-1c9102c219da" },
-  { label: "Gifts for Her", href: "/shop?occasion=for-her", seed: "photo-1513519245088-0e12902e35ca" },
+  { label: "Birthday Gifts", href: "/shop?occasion=birthdays", seed: "photo-1490481651871-ab68de25d43d" },
+  { label: "Anniversary Gifts", href: "/shop?occasion=for-couples", seed: "photo-1549465220-1a8b9238cd48" },
+  { label: "Gifts for Him", href: "/shop?occasion=for-him", seed: "photo-1522673607200-164d1b6ce486" },
+  { label: "Gifts for Her", href: "/shop?occasion=for-her", seed: "photo-1513885535751-8b9238bd345a" },
 ];
 
 export function OccasionRelations() {

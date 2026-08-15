@@ -70,7 +70,7 @@ export const homepageCategories = [
     slug: "rakhi-festive",
     note: "For rituals and rejoicing.",
     image:
-      "https://images.unsplash.com/photo-1599552683573-16b443d7a6a3?auto=format&fit=crop&w=1000&q=80",
+      "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=1000&q=80",
   },
   {
     name: "Home & decor",

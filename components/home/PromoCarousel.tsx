@@ -25,7 +25,7 @@ const SLIDES: Slide[] = [
     ctaLabel: "Shop Rakhi collection",
     href: "/shop?category=rakhi-festive",
     image:
-      "https://images.unsplash.com/photo-1599552683573-16b443d7a6a3?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=1600&q=80",
   },
   {
     eyebrow: "New Arrivals",
@@ -47,7 +47,7 @@ const SLIDES: Slide[] = [
     ctaLabel: "Personalize a gift",
     href: "/shop?category=personalized-gifts",
     image:
-      "https://images.unsplash.com/photo-1513519245088-0e12902e35ca?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=1600&q=80",
   },
 ];
 

@@ -5,14 +5,14 @@ const img = (seed: string) =>
   `https://images.unsplash.com/${seed}?auto=format&fit=crop&w=300&q=80`;
 
 const circles: { label: string; href: string; seed: string }[] = [
-  { label: "Rakhi", href: "/shop?category=rakhi-festive", seed: "photo-1599552683573-16b443d7a6a3" },
+  { label: "Rakhi", href: "/shop?category=rakhi-festive", seed: "photo-1513885535751-8b9238bd345a" },
   { label: "Personalized", href: "/shop?category=personalized-gifts", seed: "photo-1600607687939-ce8a6c25118c" },
   { label: "Home & Decor", href: "/shop?category=home-decor", seed: "photo-1604014237800-1c9102c219da" },
   { label: "Jewelry", href: "/shop?category=jewelry-accessories", seed: "photo-1535632066927-ab7c9ab60908" },
-  { label: "For Her", href: "/shop?occasion=for-her", seed: "photo-1513519245088-0e12902e35ca" },
-  { label: "For Him", href: "/shop?occasion=for-him", seed: "photo-1600607687939-ce8a6c25118c" },
-  { label: "Birthdays", href: "/shop?occasion=birthdays", seed: "photo-1599552683573-16b443d7a6a3" },
-  { label: "Custom Bouquet", href: "/#gift-builder", seed: "photo-1604014237800-1c9102c219da" },
+  { label: "For Her", href: "/shop?occasion=for-her", seed: "photo-1522673607200-164d1b6ce486" },
+  { label: "For Him", href: "/shop?occasion=for-him", seed: "photo-1549465220-1a8b9238cd48" },
+  { label: "Birthdays", href: "/shop?occasion=birthdays", seed: "photo-1490481651871-ab68de25d43d" },
+  { label: "Custom Bouquet", href: "/#gift-builder", seed: "photo-1512909006721-3d6018887383" },
 ];
 
 export function CategoryCircles() {

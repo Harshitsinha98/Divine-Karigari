@@ -15,6 +15,79 @@ import { useCommerce } from "@/components/commerce/CommerceProvider";
 
 type Suggestion = { name: string; slug: string; category: string };
 
+function LocationPill({ className = "" }: { className?: string }) {
+  const [pincode, setPincode] = useState("");
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("dk_pincode");
+    if (saved) setPincode(saved);
+  }, []);
+
+  const check = () => {
+    if (!/^\d{6}$/.test(input)) {
+      setMsg("Enter a valid 6-digit pincode.");
+      return;
+    }
+    window.localStorage.setItem("dk_pincode", input);
+    setPincode(input);
+    setMsg("Yay! We deliver to your area.");
+    window.setTimeout(() => setOpen(false), 1000);
+  };
+
+  return (
+    <div className={`relative ${className}`}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-1.5 rounded-full border border-sand-line bg-cream px-3 py-2 text-xs text-muted-ink transition hover:border-tulsi"
+      >
+        <MapPin size={14} className="text-tulsi" />
+        <span className="truncate">
+          {pincode ? `Deliver to ${pincode}` : "Deliver across India"}
+        </span>
+        <ChevronDown size={12} className="ml-auto shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-11 z-50 w-64 rounded-soft-xl border border-sand-line bg-white p-4 shadow-lift">
+          <p className="text-sm font-medium text-ink">Check delivery</p>
+          <p className="mt-1 text-xs text-muted-ink">
+            Enter your pincode to confirm delivery to your area.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <input
+              value={input}
+              onChange={(e) =>
+                setInput(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="e.g. 201316"
+              className="h-10 w-full rounded-soft border border-sand-line px-3 text-sm outline-none focus:border-tulsi"
+            />
+            <button
+              onClick={check}
+              className="h-10 shrink-0 rounded-soft bg-tulsi px-3 text-sm font-medium text-white"
+            >
+              Check
+            </button>
+          </div>
+          {msg && (
+            <p
+              className={`mt-2 text-xs ${
+                msg.startsWith("Yay") ? "text-tulsi" : "text-oxblood"
+              }`}
+            >
+              {msg}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const categoryNav: [string, string][] = [
   ["Rakhi", "/shop?category=rakhi-festive"],
   ["Personalized", "/shop?category=personalized-gifts"],
@@ -141,11 +214,8 @@ export function Header() {
             </span>
           </Link>
 
-          {/* Deliver-to pill (decorative) */}
-          <span className="hidden items-center gap-1.5 rounded-full border border-sand-line bg-cream px-3 py-2 text-xs text-muted-ink lg:inline-flex">
-            <MapPin size={14} className="text-tulsi" />
-            Deliver across India
-          </span>
+          {/* Deliver-to pincode check */}
+          <LocationPill className="hidden w-44 lg:block" />
 
           {/* Search */}
           <div className="hidden flex-1 md:block">
@@ -341,21 +411,31 @@ export function Header() {
             </div>
           </div>
 
-          <div className="mt-3 flex gap-2 border-t border-sand-line pt-4">
-            <Link
-              href="/wishlist"
-              onClick={() => setOpen(false)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-soft border border-sand-line py-3 text-sm hover:border-tulsi hover:text-tulsi"
-            >
-              <Heart size={16} /> Wishlist
-            </Link>
-            <Link
-              href="/account"
-              onClick={() => setOpen(false)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-soft border border-sand-line py-3 text-sm hover:border-tulsi hover:text-tulsi"
-            >
-              <UserRound size={16} /> Sign in
-            </Link>
+          <div className="mt-3 border-t border-sand-line pt-4">
+            <LocationPill className="mb-3 w-full" />
+            <div className="grid grid-cols-3 gap-2">
+              <Link
+                href="/track"
+                onClick={() => setOpen(false)}
+                className="flex flex-col items-center justify-center gap-1 rounded-soft border border-sand-line py-3 text-xs hover:border-tulsi hover:text-tulsi"
+              >
+                <PackageSearch size={16} /> Track
+              </Link>
+              <Link
+                href="/wishlist"
+                onClick={() => setOpen(false)}
+                className="flex flex-col items-center justify-center gap-1 rounded-soft border border-sand-line py-3 text-xs hover:border-tulsi hover:text-tulsi"
+              >
+                <Heart size={16} /> Wishlist
+              </Link>
+              <Link
+                href="/account"
+                onClick={() => setOpen(false)}
+                className="flex flex-col items-center justify-center gap-1 rounded-soft border border-sand-line py-3 text-xs hover:border-tulsi hover:text-tulsi"
+              >
+                <UserRound size={16} /> Sign in
+              </Link>
+            </div>
           </div>
         </nav>
       </div>
