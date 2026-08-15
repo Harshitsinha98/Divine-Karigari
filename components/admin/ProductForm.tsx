@@ -50,7 +50,27 @@ export function ProductForm({ product }: { product?: Product }) {
       .then((res) => setCategories(res.data ?? []));
   }, []);
   const set = (key: string, next: unknown) =>
-    setValue((current) => ({ ...current, [key]: next }));
+    setValue((current) => {
+      const updated = { ...current, [key]: next };
+      // Auto-generate slug from name when slug is empty or was auto-generated
+      if (key === "name" && typeof next === "string") {
+        const autoSlug = next
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+        const currentSlug = String(current.slug ?? "");
+        const prevAutoSlug = String(current.name ?? "")
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+        if (!currentSlug || currentSlug === prevAutoSlug) {
+          updated.slug = autoSlug;
+        }
+      }
+      return updated;
+    });
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSaving(true);
@@ -65,8 +85,27 @@ export function ProductForm({ product }: { product?: Product }) {
     );
     const result = await response.json();
     setSaving(false);
-    if (!response.ok)
+    if (!response.ok) {
+      // Parse Zod validation errors into a readable message
+      if (result.error && result.error.startsWith("[")) {
+        try {
+          const issues = JSON.parse(result.error) as {
+            path: (string | number)[];
+            message: string;
+          }[];
+          const readable = issues
+            .map(
+              (issue) =>
+                `${issue.path.join(" → ")}: ${issue.message}`,
+            )
+            .join("\n");
+          return setError(readable);
+        } catch {
+          /* fall through */
+        }
+      }
       return setError(result.error ?? "Unable to save product.");
+    }
     router.push(`/admin/products/${result.data.id}`);
     router.refresh();
   };
