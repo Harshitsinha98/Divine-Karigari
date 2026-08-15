@@ -62,7 +62,7 @@ export default async function ShopPage({
                 <summary className="flex cursor-pointer list-none items-center gap-2 rounded-soft border border-sand-line px-3 py-2 text-sm">
                   <Filter size={15} /> Filters
                 </summary>
-                <div className="absolute right-0 top-12 z-20 w-80 rounded-soft-xl border border-sand-line bg-parchment p-5 shadow-lift">
+                <div className="absolute right-0 top-12 z-20 w-[calc(100vw-40px)] max-w-80 rounded-soft-xl border border-sand-line bg-parchment p-5 shadow-lift">
                   <FilterSidebar current={current} />
                 </div>
               </details>

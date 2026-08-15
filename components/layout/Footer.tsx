@@ -20,14 +20,18 @@ export function Footer() {
           </p>
           <div className="mt-6 flex gap-3">
             <a
-              href="#"
+              href="https://www.instagram.com/divinekarigari"
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="Instagram"
               className="group rounded-full border border-parchment/15 bg-parchment/5 p-2.5 transition-all duration-300 hover:border-gold/50 hover:bg-gold/10 hover:shadow-glow"
             >
               <Instagram size={17} className="transition-colors group-hover:text-gold" />
             </a>
             <a
-              href="#"
+              href="https://www.facebook.com/divinekarigari"
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="Facebook"
               className="group rounded-full border border-parchment/15 bg-parchment/5 p-2.5 transition-all duration-300 hover:border-gold/50 hover:bg-gold/10 hover:shadow-glow"
             >
@@ -93,7 +97,7 @@ export function Footer() {
 
       {/* Bottom bar */}
       <div className="container relative flex flex-col gap-3 border-t border-parchment/8 py-5 text-xs text-parchment/40 sm:flex-row sm:items-center sm:justify-between">
-        <span>&copy; 2026 Divine Karigari &middot; Crafted in India</span>
+        <span>&copy; {new Date().getFullYear()} Divine Karigari &middot; Crafted in India</span>
         <span className="flex items-center gap-2">
           <Mail size={13} />
           Secure payments &middot; UPI &middot; Cards &middot; Netbanking

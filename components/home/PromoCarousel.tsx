@@ -54,6 +54,7 @@ const SLIDES: Slide[] = [
 export function PromoCarousel() {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [touchStart, setTouchStart] = useState(0);
   const count = SLIDES.length;
   const go = useCallback(
     (n: number) => setIndex((i) => (i + n + count) % count),
@@ -66,11 +67,20 @@ export function PromoCarousel() {
     return () => clearInterval(timer);
   }, [paused, count]);
 
+  const onTouchStart = (e: React.TouchEvent) =>
+    setTouchStart(e.touches[0].clientX);
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const diff = touchStart - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) go(diff > 0 ? 1 : -1);
+  };
+
   return (
     <div
       className="relative aspect-[16/10] w-full overflow-hidden rounded-soft-3xl shadow-lift-lg sm:aspect-[21/9]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
     >
       {SLIDES.map((slide, i) => (
         <div

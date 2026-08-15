@@ -20,7 +20,7 @@ export function ProductCarousel({ products }: { products: CatalogProduct[] }) {
         {products.map((product) => (
           <div
             key={product.id}
-            className="snap-start sm:min-w-[calc(50%-10px)] lg:min-w-[calc(25%-15px)]"
+            className="min-w-[75vw] snap-start sm:min-w-[calc(50%-10px)] lg:min-w-[calc(25%-15px)]"
           >
             <ProductCard product={product} />
           </div>

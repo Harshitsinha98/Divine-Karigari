@@ -190,7 +190,7 @@ export default async function Home() {
               </div>
               <Link
                 href="/shop"
-                className="group hidden items-center gap-1 rounded-full border border-sand-line px-5 py-2.5 text-sm font-medium text-ink transition-all duration-300 hover:border-tulsi hover:bg-tulsi/5 hover:text-tulsi sm:inline-flex"
+                className="group inline-flex items-center gap-1 rounded-full border border-sand-line px-5 py-2.5 text-sm font-medium text-ink transition-all duration-300 hover:border-tulsi hover:bg-tulsi/5 hover:text-tulsi"
               >
                 Shop bestsellers
                 <span className="transition-transform duration-300 group-hover:translate-x-0.5">
@@ -245,8 +245,8 @@ export default async function Home() {
                 />
                 <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-ink/20 to-transparent" />
               </div>
-              <div className="absolute -bottom-6 -right-6 rounded-soft-xl border border-sand-line bg-white/95 p-5 shadow-lift backdrop-blur-sm sm:-right-10">
-                <p className="font-display text-3xl text-gold">15+</p>
+              <div className="absolute -bottom-4 right-0 rounded-soft-xl border border-sand-line bg-white/95 p-4 shadow-lift backdrop-blur-sm sm:-bottom-6 sm:-right-10 sm:p-5">
+                <p className="font-display text-2xl text-gold sm:text-3xl">15+</p>
                 <p className="text-xs text-muted-ink">Years of craft tradition</p>
               </div>
             </ParallaxSection>
