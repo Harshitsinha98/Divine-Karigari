@@ -25,7 +25,7 @@ const addressSchema = z.object({
     .trim()
     .max(200)
     .transform((value) => sanitizeText(value, 200))
-    .optional(),
+    .nullish(),
   city: clean(100),
   state: clean(100),
   postalCode: z
@@ -41,14 +41,14 @@ const schema = z.object({
     .array(
       z.object({
         productId: z.string(),
-        variantId: z.string().optional(),
+        variantId: z.string().nullish(),
         quantity: z.number().int().positive(),
         customization: z
           .string()
           .trim()
           .max(200)
           .transform((value) => sanitizeText(value, 200))
-          .optional(),
+          .nullish(),
       }),
     )
     .min(1),
@@ -76,11 +76,16 @@ export async function POST(request: Request) {
       { status: 503 },
     );
   const parsed = schema.safeParse(await request.json());
-  if (!parsed.success)
+  if (!parsed.success) {
+    console.error(
+      "[create-order] Validation failed:",
+      JSON.stringify(parsed.error.issues),
+    );
     return NextResponse.json(
       { error: "Please complete your delivery details and cart." },
       { status: 400 },
     );
+  }
   try {
     const input = parsed.data;
     if (input.addressId) {
