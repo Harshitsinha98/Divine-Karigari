@@ -1,12 +1,36 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Component, type ReactNode, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { Flower2, Gift, Minus, Plus, ShoppingBag, Sparkles } from "lucide-react";
 import { useCommerce } from "@/components/commerce/CommerceProvider";
 import type { CatalogProduct } from "@/components/home/ProductCard";
+import type { Bloom3D } from "@/components/home/Bouquet3D";
 import { guessEmoji, type BuilderType } from "@/lib/builder";
+
+const Bouquet3D = dynamic(() => import("@/components/home/Bouquet3D"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center text-sm text-muted-ink">
+      Preparing your bouquet…
+    </div>
+  ),
+});
+
+class BouquetErrorBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
@@ -138,6 +162,108 @@ function Bloom({
   );
 }
 
+// CSS/SVG bouquet used as a graceful fallback when WebGL/3D is unavailable.
+function CssBouquet({
+  selected,
+  picks,
+}: {
+  selected: CatalogProduct[];
+  picks: Record<string, number>;
+}) {
+  return (
+    <div
+      className="relative flex flex-col items-center"
+      style={{ transformStyle: "preserve-3d" }}
+    >
+      <div
+        className="relative h-56 w-72"
+        style={{ transform: "rotateX(8deg)" }}
+      >
+        {selected.length > 0 &&
+          FILLER.map((f, i) => (
+            <span
+              key={`filler-${i}`}
+              className="absolute h-1.5 w-1.5 rounded-full bg-white/85 shadow-sm"
+              style={{
+                left: `calc(50% + ${f.x}px)`,
+                top: `calc(46% + ${f.y}px)`,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+          ))}
+        <AnimatePresence>
+          {selected.map((item, i) => {
+            const theta = i * GOLDEN_ANGLE;
+            const radius = 30 * Math.sqrt(i);
+            const x = Math.cos(theta) * radius;
+            const y = Math.sin(theta) * radius * 0.82;
+            const size = 78 - (i % 3) * 6;
+            const color = PETAL_COLORS[i % PETAL_COLORS.length];
+            return (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.3 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.3 }}
+                transition={{ type: "spring", stiffness: 240, damping: 18 }}
+                className="absolute"
+                style={{
+                  left: `calc(50% + ${x}px)`,
+                  top: `calc(46% + ${y}px)`,
+                  zIndex: 200 + Math.round(y),
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                <Bloom
+                  item={item}
+                  qty={picks[item.id]}
+                  color={color}
+                  size={size}
+                  rotate={(i * 47) % 360}
+                />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+        {!selected.length && (
+          <div className="absolute left-1/2 top-1/2 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-sand-line text-4xl text-muted-ink">
+            🌷
+          </div>
+        )}
+      </div>
+      <svg
+        width="120"
+        height="70"
+        viewBox="0 0 120 70"
+        className="-mt-3"
+        aria-hidden
+      >
+        {[52, 60, 68, 46, 74].map((sx, i) => (
+          <path
+            key={i}
+            d={`M${sx} 0 C ${sx + (60 - sx) * 0.4} 30, 60 45, 60 70`}
+            stroke="#274B3B"
+            strokeWidth="3"
+            fill="none"
+            opacity={0.85}
+          />
+        ))}
+        <path d="M54 24 q -16 -6 -22 5 q 16 5 22 -5Z" fill="#35644D" />
+        <path d="M66 32 q 16 -6 22 5 q -16 5 -22 -5Z" fill="#35644D" />
+      </svg>
+      <div className="relative -mt-1 h-24 w-36">
+        <div
+          className="absolute inset-x-0 top-0 mx-auto h-24 w-36 bg-gradient-to-b from-[#d9c3a0] via-[#c9ad82] to-[#b2915f] shadow-lift-lg"
+          style={{ clipPath: "polygon(16% 0, 84% 0, 100% 100%, 0 100%)" }}
+        />
+        <span className="absolute left-1/2 top-0 -translate-x-1/2 text-xl">
+          🎀
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function GiftBuilderStudio({
   bouquetItems,
   giftboxItems,
@@ -199,6 +325,14 @@ export function GiftBuilderStudio({
 
   const isBouquet = mode === "bouquet";
 
+  const blooms: Bloom3D[] = selected.map((item, i) => ({
+    id: item.id,
+    name: item.name,
+    image: item.images?.[0],
+    color: PETAL_COLORS[i % PETAL_COLORS.length],
+    qty: picks[item.id],
+  }));
+
   return (
     <div className="overflow-hidden rounded-soft-3xl border border-sand-line bg-gradient-to-br from-warm-white via-parchment to-cream shadow-lift-lg">
       {/* Header + mode toggle */}
@@ -259,111 +393,17 @@ export function GiftBuilderStudio({
           />
 
           {isBouquet ? (
-            /* ── BOUQUET ── */
-            <div
-              className="relative flex flex-col items-center"
-              style={{ transformStyle: "preserve-3d" }}
-            >
-              {/* Bloom head — products arranged like a real bouquet */}
-              <div
-                className="relative h-56 w-72"
-                style={{ transform: "rotateX(8deg)" }}
-              >
-                {/* baby's-breath filler for fullness */}
-                {selected.length > 0 &&
-                  FILLER.map((f, i) => (
-                    <span
-                      key={`filler-${i}`}
-                      className="absolute h-1.5 w-1.5 rounded-full bg-white/85 shadow-sm"
-                      style={{
-                        left: `calc(50% + ${f.x}px)`,
-                        top: `calc(46% + ${f.y}px)`,
-                        transform: "translate(-50%, -50%)",
-                      }}
-                    />
-                  ))}
-                <AnimatePresence>
-                  {selected.map((item, i) => {
-                    const theta = i * GOLDEN_ANGLE;
-                    const radius = 30 * Math.sqrt(i);
-                    const x = Math.cos(theta) * radius;
-                    const y = Math.sin(theta) * radius * 0.82;
-                    const size = 78 - (i % 3) * 6;
-                    const color = PETAL_COLORS[i % PETAL_COLORS.length];
-                    return (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, scale: 0.3 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.3 }}
-                        transition={{ type: "spring", stiffness: 240, damping: 18 }}
-                        className="absolute"
-                        style={{
-                          left: `calc(50% + ${x}px)`,
-                          top: `calc(46% + ${y}px)`,
-                          zIndex: 200 + Math.round(y),
-                          transform: "translate(-50%, -50%)",
-                        }}
-                      >
-                        <Bloom
-                          item={item}
-                          qty={picks[item.id]}
-                          color={color}
-                          size={size}
-                          rotate={(i * 47) % 360}
-                        />
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-                {!selected.length && (
-                  <div className="absolute left-1/2 top-1/2 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-sand-line text-4xl text-muted-ink">
-                    🌷
+            /* ── BOUQUET (true 3D, rotatable) ── */
+            <div className="relative h-[300px] w-full sm:h-[340px]">
+              <BouquetErrorBoundary
+                fallback={
+                  <div className="flex h-full items-center justify-center">
+                    <CssBouquet selected={selected} picks={picks} />
                   </div>
-                )}
-              </div>
-
-              {/* Stems + leaves */}
-              <svg
-                width="120"
-                height="70"
-                viewBox="0 0 120 70"
-                className="-mt-3"
-                aria-hidden
+                }
               >
-                {[52, 60, 68, 46, 74].map((sx, i) => (
-                  <path
-                    key={i}
-                    d={`M${sx} 0 C ${sx + (60 - sx) * 0.4} 30, 60 45, 60 70`}
-                    stroke="#274B3B"
-                    strokeWidth="3"
-                    fill="none"
-                    opacity={0.85}
-                  />
-                ))}
-                <path d="M54 24 q -16 -6 -22 5 q 16 5 22 -5Z" fill="#35644D" />
-                <path d="M66 32 q 16 -6 22 5 q -16 5 -22 -5Z" fill="#35644D" />
-              </svg>
-
-              {/* Kraft wrap + ribbon */}
-              <div className="relative -mt-1 h-24 w-36">
-                <div
-                  className="absolute inset-x-0 top-0 mx-auto h-24 w-36 bg-gradient-to-b from-[#d9c3a0] via-[#c9ad82] to-[#b2915f] shadow-lift-lg"
-                  style={{ clipPath: "polygon(16% 0, 84% 0, 100% 100%, 0 100%)" }}
-                />
-                <div
-                  className="absolute inset-x-0 top-0 mx-auto h-24 w-36 opacity-25"
-                  style={{
-                    clipPath: "polygon(16% 0, 84% 0, 100% 100%, 0 100%)",
-                    background:
-                      "repeating-linear-gradient(120deg, transparent 0 9px, rgba(255,255,255,.35) 9px 11px)",
-                  }}
-                />
-                <div className="absolute left-1/2 top-1.5 h-3.5 w-24 -translate-x-1/2 rounded-full bg-gradient-to-r from-gold to-gold-light shadow" />
-                <span className="absolute left-1/2 top-0 -translate-x-1/2 text-xl">
-                  🎀
-                </span>
-              </div>
+                <Bouquet3D blooms={blooms} />
+              </BouquetErrorBoundary>
             </div>
           ) : (
             /* ── GIFT BOX ── */
