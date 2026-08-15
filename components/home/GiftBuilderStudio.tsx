@@ -73,7 +73,7 @@ export function GiftBuilderStudio({
     });
 
   const addAll = () => {
-    if (!count) return;
+    if (!count || demo) return;
     const label = BUILDER_CART_LABEL[mode];
     selected.forEach((item) =>
       addToCart({
@@ -226,11 +226,16 @@ export function GiftBuilderStudio({
             </div>
             <button
               onClick={addAll}
-              disabled={!count}
+              disabled={!count || demo}
+              title={
+                demo
+                  ? "Preview mode — the store owner must add real builder items first."
+                  : undefined
+              }
               className="inline-flex items-center gap-2 rounded-full bg-gold px-6 py-3 text-sm font-medium text-ink transition duration-300 hover:bg-gold-light hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ShoppingBag size={16} />
-              Add to cart
+              {demo ? "Preview only" : "Add to cart"}
             </button>
           </div>
         </div>

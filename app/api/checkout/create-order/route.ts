@@ -247,6 +247,8 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    // Log so payment-gateway/database faults are diagnosable in production.
+    console.error("[create-order] Failed:", error);
     return NextResponse.json(
       {
         error:

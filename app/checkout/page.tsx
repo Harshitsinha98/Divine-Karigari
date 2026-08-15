@@ -210,26 +210,46 @@ export default function CheckoutPage() {
       return;
     setLoading(true);
     setError("");
-    const response = await fetch("/api/checkout/create-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        addressId: address?.id,
-        shippingAddress: currentAddress,
-        items: cart.map((item) => ({
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          customization: item.customization,
-        })),
-        savePaymentMethod: saveMethod,
-        paymentMethodType: methodType,
-        paymentMethodLabel: methodLabel || "Razorpay method",
-      }),
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      setError(result.error ?? "Unable to start payment.");
+    let result: {
+      error?: string;
+      data: {
+        key: string;
+        amount: number;
+        currency: string;
+        orderNumber: string;
+        razorpayOrderId: string;
+        orderId: string;
+        customer: Record<string, string>;
+      };
+    };
+    try {
+      const response = await fetch("/api/checkout/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          addressId: address?.id,
+          shippingAddress: currentAddress,
+          items: cart.map((item) => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            customization: item.customization,
+          })),
+          savePaymentMethod: saveMethod,
+          paymentMethodType: methodType,
+          paymentMethodLabel: methodLabel || "Razorpay method",
+        }),
+      });
+      result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(result.error ?? "Unable to start payment.");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError(
+        "Network error. Please check your connection and try again.",
+      );
       setLoading(false);
       return;
     }

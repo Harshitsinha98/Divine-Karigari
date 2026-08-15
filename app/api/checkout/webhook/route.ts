@@ -134,7 +134,9 @@ export async function POST(request: Request) {
     await createShiprocketOrderForOrder(order.id);
     await emailDelivery;
     return NextResponse.json({ received: true });
-  } catch {
+  } catch (error) {
+    // Log so paid-but-unsynced orders leave a diagnostic trail.
+    console.error("[razorpay webhook] Processing failed:", error);
     return NextResponse.json(
       { error: "Webhook processing failed" },
       { status: 500 },
