@@ -103,6 +103,32 @@ export function Footer() {
           Secure payments &middot; UPI &middot; Cards &middot; Netbanking
         </span>
       </div>
+
+      {/* Credit */}
+      <div className="border-t border-parchment/5 py-4 text-center text-[11px] text-parchment/35">
+        <span className="inline-flex items-center gap-1.5">
+          Made with{" "}
+          <span className="inline-block animate-pulse text-[#E11D74]">&hearts;</span>{" "}
+          by{" "}
+          <a
+            href="https://www.codeskate.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-parchment/60 underline decoration-parchment/20 transition hover:text-gold hover:decoration-gold"
+          >
+            Codeskate Technologies
+          </a>
+          <span className="text-parchment/25">|</span>
+          <a
+            href="https://www.codeskate.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-parchment/50 transition hover:text-gold"
+          >
+            Want a website like this? Visit codeskate.com
+          </a>
+        </span>
+      </div>
     </footer>
   );
 }
