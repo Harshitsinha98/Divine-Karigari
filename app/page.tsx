@@ -1,20 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { RangoliMotif } from "@/components/ui/RangoliMotif";
-import {
-  HeroBadge,
-  HeroCopy,
-  HeroEyebrow,
-  HeroHeading,
-  HeroIntro,
-  HeroOrbs,
-} from "@/components/home/HeroIntro";
-import { CategoryGrid } from "@/components/home/CategoryGrid";
 import { ProductCarousel } from "@/components/home/ProductCarousel";
 import { ProductRail } from "@/components/home/ProductRail";
 import { PromoCarousel } from "@/components/home/PromoCarousel";
+import { CategoryCircles } from "@/components/home/CategoryCircles";
+import { OccasionRelations } from "@/components/home/OccasionRelations";
 import { TestimonialsCarousel } from "@/components/home/TestimonialsCarousel";
 import { SocialProofGrid } from "@/components/home/SocialProofGrid";
 import { NewsletterForm } from "@/components/home/NewsletterForm";
@@ -55,8 +46,6 @@ export default async function Home() {
   const bestsellers = bestsellersResult.products;
   const personalized = personalizedResult.products;
 
-  // Rakhi/festive: prefer the seeded category, then the occasion tag,
-  // then gracefully fall back to newest arrivals so the section is never empty.
   let rakhiProducts = rakhiResult.products;
   if (!rakhiProducts.length) {
     rakhiProducts = (await getListingProducts({ occasion: "festivals" }))
@@ -67,129 +56,45 @@ export default async function Home() {
   return (
     <main className="overflow-hidden">
       {/* ═══════════════════════════════════════════════
-          HERO SECTION — Modern with floating orbs & gradient bg
+          HERO — Auto-rotating offers carousel
       ═══════════════════════════════════════════════ */}
-      <section className="relative isolate overflow-hidden">
-        {/* Animated gradient background orbs */}
-        <HeroOrbs />
-
-        {/* Subtle dot pattern overlay */}
-        <div className="pointer-events-none absolute inset-0 -z-10 dot-pattern opacity-[0.03]" />
-
-        <div className="container relative grid min-h-[680px] items-center gap-10 py-20 sm:min-h-[750px] lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
-          {/* Animated Rangoli — subtle background */}
-          <RangoliMotif className="pointer-events-none absolute -right-32 top-10 -z-10 h-[400px] w-[400px] text-gold/30 sm:right-0 sm:h-[500px] sm:w-[500px] animate-spin-slow" />
-
-          {/* Left: Text content */}
-          <HeroIntro>
-            <div className="max-w-2xl">
-              {/* Modern badge/pill */}
-              <HeroBadge>
-                <span className="text-xs font-medium text-gold">
-                  Handcrafted in India
-                </span>
-              </HeroBadge>
-
-              <HeroEyebrow>
-                <span className="block text-xs font-medium uppercase tracking-[0.3em] text-oxblood/80">
-                  Artisanal gifting &middot; Since 2020
-                </span>
-              </HeroEyebrow>
-
-              <HeroHeading>
-                <span className="mt-4 block font-display text-5xl leading-[1.05] tracking-tight sm:text-7xl lg:text-[5.5rem]">
-                  Gifts with a<br />
-                  little more{" "}
-                  <span className="text-gradient-gold">meaning.</span>
-                </span>
-              </HeroHeading>
-
-              <HeroCopy>
-                <p className="mt-7 max-w-lg text-base leading-relaxed text-muted-ink sm:text-lg">
-                  Beautiful, considered pieces for the people and moments that
-                  matter. Every piece tells a story of Indian craftsmanship.
-                </p>
-                <div className="mt-9 flex flex-wrap gap-4">
-                  <Button className="shadow-glow">
-                    Explore the collection
-                  </Button>
-                  <Link
-                    href="/about"
-                    className="group inline-flex min-h-11 items-center gap-2 rounded-full border border-sand-line/80 px-6 text-sm font-medium transition-all duration-300 hover:border-gold hover:bg-gold/5 hover:text-gold hover:shadow-soft"
-                  >
-                    Our story
-                    <span className="transition-transform duration-300 group-hover:translate-x-0.5">
-                      &rarr;
-                    </span>
-                  </Link>
-                </div>
-
-                {/* Social proof mini stats */}
-                <div className="mt-12 flex items-center gap-6 border-t border-sand-line/50 pt-6">
-                  <div>
-                    <p className="font-display text-2xl text-ink">2000+</p>
-                    <p className="text-xs text-muted-ink">Happy customers</p>
-                  </div>
-                  <div className="h-8 w-px bg-sand-line/50" />
-                  <div>
-                    <p className="font-display text-2xl text-ink">50+</p>
-                    <p className="text-xs text-muted-ink">Artisan partners</p>
-                  </div>
-                  <div className="h-8 w-px bg-sand-line/50" />
-                  <div>
-                    <p className="font-display text-2xl text-ink">4.9</p>
-                    <p className="text-xs text-muted-ink">Average rating</p>
-                  </div>
-                </div>
-              </HeroCopy>
-            </div>
-          </HeroIntro>
-
-          {/* Right: Hero visual — floating product collage */}
-          <div className="relative hidden lg:block">
-            <div className="relative aspect-square">
-              {/* Main product image */}
-              <div className="absolute inset-[10%] overflow-hidden rounded-soft-3xl shadow-lift-lg">
-                <Image
-                  src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=800&q=80"
-                  alt="Handcrafted gift box with artisan details"
-                  fill
-                  sizes="40vw"
-                  className="object-cover"
-                  priority
-                />
-              </div>
-              {/* Small floating card top-right */}
-              <div className="absolute -right-2 top-[5%] rounded-soft-xl border border-sand-line/50 bg-parchment/90 p-4 shadow-lift backdrop-blur-sm animate-float-gentle">
-                <p className="text-xs text-muted-ink">Bestseller</p>
-                <p className="mt-0.5 font-display text-sm">Brass Name Plate</p>
-                <p className="mt-1 text-sm font-medium text-gold">&rupee;2,499</p>
-              </div>
-              {/* Small floating card bottom-left */}
-              <div className="absolute -left-4 bottom-[15%] rounded-soft-xl border border-sand-line/50 bg-parchment/90 p-4 shadow-lift backdrop-blur-sm animate-float-slow">
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-1">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gold/20 text-[10px]">A</span>
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-oxblood/20 text-[10px]">R</span>
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-tulsi/20 text-[10px]">M</span>
-                  </div>
-                  <span className="text-xs text-muted-ink">2000+ happy gifters</span>
-                </div>
-              </div>
-              {/* Decorative ring */}
-              <div className="absolute inset-[3%] rounded-full border border-dashed border-gold/20 animate-spin-slow" />
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom gradient fade */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-parchment to-transparent" />
+      <section className="container pt-5 sm:pt-6">
+        <PromoCarousel />
       </section>
 
       {/* ═══════════════════════════════════════════════
-          GIFT BUILDER — Customizable bouquet & gift box (below hero)
+          CATEGORY CIRCLES — Quick shortcuts
       ═══════════════════════════════════════════════ */}
-      <section className="container pt-14 sm:pt-20">
+      <section className="container pt-8 sm:pt-12">
+        <Reveal>
+          <CategoryCircles />
+        </Reveal>
+      </section>
+
+      {/* ═══════════════════════════════════════════════
+          SHOP BY OCCASIONS & RELATIONS
+      ═══════════════════════════════════════════════ */}
+      <section className="container py-12 sm:py-16">
+        <Reveal>
+          <div className="mb-8 text-center">
+            <h2 className="font-display text-3xl sm:text-4xl">
+              Shop by Occasions &amp; Relations
+            </h2>
+            <p className="mt-2 text-sm text-muted-ink">
+              Surprise your loved ones
+            </p>
+          </div>
+          <OccasionRelations />
+        </Reveal>
+      </section>
+
+      {/* ═══════════════════════════════════════════════
+          GIFT BUILDER — Customizable bouquet & gift box
+      ═══════════════════════════════════════════════ */}
+      <section
+        id="gift-builder"
+        className="container scroll-mt-28 pb-4 pt-2 sm:pt-4"
+      >
         <Reveal>
           <GiftBuilderStudio
             bouquetItems={bouquetBuilder.items}
@@ -200,55 +105,9 @@ export default async function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════
-          PROMO CAROUSEL — Auto-rotating festive/offer banners
-      ═══════════════════════════════════════════════ */}
-      <section className="container pt-2 sm:pt-4">
-        <Reveal>
-          <PromoCarousel />
-        </Reveal>
-      </section>
-
-      {/* ═══════════════════════════════════════════════
-          CATEGORY GRID — With modern section header
-      ═══════════════════════════════════════════════ */}
-      <section className="relative container py-24 sm:py-32">
-        {/* Floating decorative element */}
-        <FloatingDecor
-          speed={0.4}
-          className="absolute -left-20 top-20 h-72 w-72 rounded-full bg-gradient-radial from-gold/8 to-transparent blur-2xl"
-        />
-
-        <Reveal>
-          <div className="mb-12 flex items-end justify-between gap-5">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-gold">
-                <span className="h-1 w-1 rounded-full bg-gold" />
-                Find your feeling
-              </span>
-              <h2 className="mt-5 font-display text-4xl leading-tight sm:text-5xl lg:text-6xl">
-                Gifts for every kind
-                <br className="hidden sm:block" /> of{" "}
-                <span className="text-gradient-gold">moment.</span>
-              </h2>
-            </div>
-            <Link
-              href="/shop"
-              className="group hidden items-center gap-1 rounded-full border border-sand-line px-5 py-2.5 text-sm font-medium text-ink transition-all duration-300 hover:border-gold hover:bg-gold/5 hover:text-gold sm:inline-flex"
-            >
-              View all gifts
-              <span className="transition-transform duration-300 group-hover:translate-x-0.5">
-                &rarr;
-              </span>
-            </Link>
-          </div>
-        </Reveal>
-        <CategoryGrid />
-      </section>
-
-      {/* ═══════════════════════════════════════════════
           NEW ARRIVALS — Product rail
       ═══════════════════════════════════════════════ */}
-      <section className="container pb-4 pt-4 sm:pb-8">
+      <section className="container pb-4 pt-12 sm:pt-16">
         <ProductRail
           eyebrow="Just in"
           accent="gold"
@@ -265,14 +124,14 @@ export default async function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════
-          FESTIVE RAKHI COLLECTION — Special limited section
+          FESTIVE RAKHI COLLECTION
       ═══════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden border-y border-gold/20">
-        <div className="absolute inset-0 bg-gradient-to-br from-oxblood/10 via-parchment to-gold/10" />
+      <section className="relative mt-12 overflow-hidden border-y border-gold/20 sm:mt-16">
+        <div className="absolute inset-0 bg-gradient-to-br from-oxblood/10 via-white to-tulsi/10" />
         <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gradient-radial from-gold/20 to-transparent blur-3xl" />
-        <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-gradient-radial from-oxblood/10 to-transparent blur-3xl" />
+        <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-gradient-radial from-tulsi/10 to-transparent blur-3xl" />
 
-        <div className="container relative py-24 sm:py-32">
+        <div className="container relative py-20 sm:py-24">
           <Reveal>
             <div className="mb-12 flex flex-col items-start gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -292,7 +151,7 @@ export default async function Home() {
               </div>
               <Link
                 href="/shop?category=rakhi-festive"
-                className="group inline-flex items-center gap-2 rounded-full bg-oxblood px-6 py-3 text-sm font-medium text-parchment transition-all duration-300 hover:bg-oxblood/90 hover:shadow-lift"
+                className="group inline-flex items-center gap-2 rounded-full bg-oxblood px-6 py-3 text-sm font-medium text-white transition-all duration-300 hover:bg-oxblood/90 hover:shadow-lift"
               >
                 Shop all Rakhi
                 <span className="transition-transform duration-300 group-hover:translate-x-0.5">
@@ -308,18 +167,16 @@ export default async function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════
-          BESTSELLERS CAROUSEL — With gradient divider
+          BESTSELLERS
       ═══════════════════════════════════════════════ */}
-      <section className="relative border-y border-sand-line/50">
-        {/* Gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-parchment via-cream to-parchment" />
-
-        <div className="container relative py-24 sm:py-32">
+      <section className="relative border-b border-sand-line">
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-cream to-white" />
+        <div className="container relative py-20 sm:py-24">
           <Reveal>
             <div className="mb-12 flex items-end justify-between gap-5">
               <div>
-                <span className="inline-flex items-center gap-2 rounded-full border border-oxblood/15 bg-oxblood/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-oxblood">
-                  <span className="h-1 w-1 rounded-full bg-oxblood" />
+                <span className="inline-flex items-center gap-2 rounded-full border border-tulsi/20 bg-tulsi/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-tulsi">
+                  <span className="h-1 w-1 rounded-full bg-tulsi" />
                   Most loved
                 </span>
                 <h2 className="mt-5 font-display text-4xl leading-tight sm:text-5xl lg:text-6xl">
@@ -327,12 +184,13 @@ export default async function Home() {
                   <span className="text-gradient-gold">remembered.</span>
                 </h2>
                 <p className="mt-3 max-w-md text-base text-muted-ink">
-                  Our community&apos;s favorites — pieces that keep getting chosen for their craft and care.
+                  Our community&apos;s favorites — pieces that keep getting
+                  chosen for their craft and care.
                 </p>
               </div>
               <Link
                 href="/shop"
-                className="group hidden items-center gap-1 rounded-full border border-sand-line px-5 py-2.5 text-sm font-medium text-ink transition-all duration-300 hover:border-gold hover:bg-gold/5 hover:text-gold sm:inline-flex"
+                className="group hidden items-center gap-1 rounded-full border border-sand-line px-5 py-2.5 text-sm font-medium text-ink transition-all duration-300 hover:border-tulsi hover:bg-tulsi/5 hover:text-tulsi sm:inline-flex"
               >
                 Shop bestsellers
                 <span className="transition-transform duration-300 group-hover:translate-x-0.5">
@@ -348,9 +206,9 @@ export default async function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════
-          PERSONALIZED PICKS — Product rail
+          PERSONALIZED PICKS
       ═══════════════════════════════════════════════ */}
-      <section className="container py-24 sm:py-32">
+      <section className="container py-20 sm:py-24">
         <ProductRail
           eyebrow="Make it personal"
           accent="tulsi"
@@ -367,17 +225,15 @@ export default async function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════
-          CRAFT STORY — Split layout with parallax image
+          CRAFT STORY
       ═══════════════════════════════════════════════ */}
-      <section className="relative container py-24 sm:py-32">
+      <section className="relative container py-20 sm:py-24">
         <FloatingDecor
           speed={0.3}
-          className="absolute -right-10 top-40 h-60 w-60 rounded-full bg-gradient-radial from-oxblood/6 to-transparent blur-2xl"
+          className="absolute -right-10 top-40 h-60 w-60 rounded-full bg-gradient-radial from-tulsi/8 to-transparent blur-2xl"
         />
-
         <Reveal>
           <div className="grid items-center gap-12 md:grid-cols-2 md:gap-20">
-            {/* Image with modern frame */}
             <ParallaxSection speed={0.2} className="relative">
               <div className="relative aspect-[4/5] overflow-hidden rounded-soft-3xl shadow-lift-lg">
                 <Image
@@ -387,17 +243,14 @@ export default async function Home() {
                   sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover"
                 />
-                {/* Gradient overlay at bottom */}
                 <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-ink/20 to-transparent" />
               </div>
-              {/* Floating accent card */}
-              <div className="absolute -bottom-6 -right-6 rounded-soft-xl border border-sand-line/50 bg-parchment/90 p-5 shadow-lift backdrop-blur-sm sm:-right-10">
+              <div className="absolute -bottom-6 -right-6 rounded-soft-xl border border-sand-line bg-white/95 p-5 shadow-lift backdrop-blur-sm sm:-right-10">
                 <p className="font-display text-3xl text-gold">15+</p>
                 <p className="text-xs text-muted-ink">Years of craft tradition</p>
               </div>
             </ParallaxSection>
 
-            {/* Text content */}
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-tulsi/15 bg-tulsi/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-tulsi">
                 <span className="h-1 w-1 rounded-full bg-tulsi" />
@@ -417,24 +270,21 @@ export default async function Home() {
                 Every piece is made in small batches, finished by human hands,
                 and chosen to make another person feel seen.
               </p>
-
-              {/* Feature pills */}
               <div className="mt-8 flex flex-wrap gap-2">
                 {["Small Batch", "Handcrafted", "Eco-Friendly", "Made in India"].map(
                   (tag) => (
                     <span
                       key={tag}
-                      className="rounded-full border border-sand-line bg-parchment px-3 py-1.5 text-xs font-medium text-muted-ink"
+                      className="rounded-full border border-sand-line bg-white px-3 py-1.5 text-xs font-medium text-muted-ink"
                     >
                       {tag}
                     </span>
                   ),
                 )}
               </div>
-
               <Link
                 href="/about"
-                className="group mt-8 inline-flex items-center gap-2 text-sm font-medium text-oxblood transition-all duration-300 hover:text-gold"
+                className="group mt-8 inline-flex items-center gap-2 text-sm font-medium text-oxblood transition-all duration-300 hover:text-tulsi"
               >
                 Read our story
                 <span className="transition-transform duration-300 group-hover:translate-x-1">
@@ -447,29 +297,24 @@ export default async function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════
-          TESTIMONIALS — Dark section with gradient
+          TESTIMONIALS
       ═══════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden bg-tulsi text-parchment">
-        {/* Subtle gradient overlay */}
+      <section className="relative overflow-hidden bg-tulsi text-white">
         <div className="absolute inset-0 bg-gradient-to-br from-tulsi via-tulsi-light/20 to-tulsi" />
-
-        {/* Decorative floating orb */}
         <div className="pointer-events-none absolute -right-40 top-10 h-80 w-80 rounded-full bg-gradient-radial from-gold/10 to-transparent blur-3xl" />
-        <div className="pointer-events-none absolute -left-20 bottom-10 h-60 w-60 rounded-full bg-gradient-radial from-parchment/5 to-transparent blur-3xl" />
-
-        <div className="container relative py-24 sm:py-32">
+        <div className="container relative py-20 sm:py-24">
           <Reveal>
             <div className="mb-12">
-              <span className="inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-gold">
-                <span className="h-1 w-1 rounded-full bg-gold" />
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-white">
+                <span className="h-1 w-1 rounded-full bg-gold-light" />
                 Kind words
               </span>
               <h2 className="mt-5 font-display text-4xl sm:text-5xl lg:text-6xl">
-                Gifts that stay{" "}
-                <span className="text-gold">with you.</span>
+                Gifts that stay <span className="text-gold-light">with you.</span>
               </h2>
-              <p className="mt-3 max-w-md text-base text-parchment/60">
-                Don&apos;t take our word for it — hear from people who&apos;ve gifted with love.
+              <p className="mt-3 max-w-md text-base text-white/70">
+                Don&apos;t take our word for it — hear from people who&apos;ve
+                gifted with love.
               </p>
             </div>
           </Reveal>
@@ -478,9 +323,9 @@ export default async function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════
-          SOCIAL PROOF / INSTAGRAM GRID
+          SOCIAL PROOF
       ═══════════════════════════════════════════════ */}
-      <section className="container py-24 sm:py-32">
+      <section className="container py-20 sm:py-24">
         <Reveal>
           <div className="mb-12 flex items-end justify-between gap-5">
             <div>
@@ -501,14 +346,12 @@ export default async function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════
-          NEWSLETTER — Modern card with gradient border
+          NEWSLETTER
       ═══════════════════════════════════════════════ */}
-      <section className="container pb-24 sm:pb-32">
+      <section className="container pb-20 sm:pb-24">
         <Reveal>
           <div className="gradient-border relative overflow-hidden rounded-soft-2xl p-10 sm:p-14">
-            {/* Background decoration */}
             <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-gradient-radial from-gold/10 to-transparent blur-2xl" />
-
             <div className="relative grid items-center gap-8 md:grid-cols-2">
               <div>
                 <span className="inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-gold">

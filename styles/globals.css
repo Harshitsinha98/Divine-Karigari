@@ -4,11 +4,11 @@
 
 :root {
   color-scheme: light;
-  --gradient-gold: linear-gradient(135deg, #b8862e 0%, #d4a853 50%, #b8862e 100%);
-  --gradient-warm: linear-gradient(135deg, #f6eedf 0%, #ffe8c2 50%, #f6eedf 100%);
-  --gradient-hero: linear-gradient(160deg, #f6eedf 0%, #fff5e6 30%, #f6eedf 70%, #fef0d5 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));
-  --gradient-dark: linear-gradient(160deg, #274b3b 0%, #1a3329 50%, #274b3b 100%);
+  --gradient-gold: linear-gradient(135deg, #e11d74 0%, #f472b6 50%, #e11d74 100%);
+  --gradient-warm: linear-gradient(135deg, #ffffff 0%, #ecfbf8 50%, #ffffff 100%);
+  --gradient-hero: linear-gradient(160deg, #ffffff 0%, #f0fbf9 35%, #ffffff 70%, #fdeef5 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.15));
+  --gradient-dark: linear-gradient(160deg, #0e7c6f 0%, #0a5d53 50%, #0e7c6f 100%);
 }
 
 * {
@@ -20,14 +20,14 @@ html {
 }
 
 body {
-  background: #f6eedf;
-  color: #2b241c;
+  background: #ffffff;
+  color: #15302b;
   font-family: var(--font-inter), sans-serif;
 }
 
 ::selection {
-  background: #b8862e;
-  color: #f6eedf;
+  background: #e11d74;
+  color: #ffffff;
 }
 
 button,
@@ -38,14 +38,14 @@ textarea {
 
 /* Modern gradient text utility */
 .text-gradient-gold {
-  background: linear-gradient(135deg, #b8862e 0%, #d4a853 40%, #7a2530 100%);
+  background: linear-gradient(135deg, #e11d74 0%, #f472b6 45%, #0e7c6f 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-gradient-dark {
-  background: linear-gradient(135deg, #2b241c 0%, #706657 100%);
+  background: linear-gradient(135deg, #15302b 0%, #5c6b66 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -69,7 +69,7 @@ textarea {
 /* Gradient border utility */
 .gradient-border {
   position: relative;
-  background: #f6eedf;
+  background: #ffffff;
   border-radius: 16px;
 }
 
@@ -79,7 +79,7 @@ textarea {
   inset: 0;
   border-radius: inherit;
   padding: 1.5px;
-  background: linear-gradient(135deg, #b8862e, #d4a853, #b8862e);
+  background: linear-gradient(135deg, #e11d74, #f472b6, #0e7c6f);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -165,7 +165,7 @@ textarea {
 
 .card-hover:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(43, 36, 28, 0.12), 0 8px 16px rgba(184, 134, 46, 0.08);
+  box-shadow: 0 20px 40px rgba(21, 48, 43, 0.12), 0 8px 16px rgba(225, 29, 116, 0.08);
 }
 
 /* Smooth image zoom on hover */
@@ -179,7 +179,7 @@ textarea {
 
 /* Dot pattern background */
 .dot-pattern {
-  background-image: radial-gradient(circle, #b8862e 1px, transparent 1px);
+  background-image: radial-gradient(circle, #0e7c6f 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
