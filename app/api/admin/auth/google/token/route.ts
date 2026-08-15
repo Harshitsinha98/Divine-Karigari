@@ -7,39 +7,38 @@ const SUPER_ADMIN_EMAIL = (
   process.env.ADMIN_GOOGLE_EMAIL ?? "divinekarigari@gmail.com"
 ).toLowerCase();
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/admin";
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
-
-  if (!code) {
-    console.error("[admin-callback] No code received:", Object.fromEntries(searchParams.entries()));
-    return NextResponse.redirect(
-      new URL("/admin/login?error=no_code", appUrl),
-    );
-  }
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !supabaseServiceKey) {
-    console.error("[admin-callback] Supabase env vars missing");
-    return NextResponse.redirect(
-      new URL("/admin/login?error=server_error", appUrl),
-    );
-  }
-
+// Receives the access_token from the client-side hash fragment extraction,
+// verifies it with Supabase, and creates an admin session if authorized.
+export async function POST(request: Request) {
   try {
+    const { access_token } = await request.json();
+    if (!access_token || typeof access_token !== "string") {
+      return NextResponse.json(
+        { error: "Missing access token." },
+        { status: 400 },
+      );
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json(
+        { error: "Server not configured." },
+        { status: 500 },
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    // Verify the token and get the user
+    const { data, error } = await supabase.auth.getUser(access_token);
     if (error || !data.user?.email) {
-      console.error("[admin-callback] Code exchange failed:", error?.message);
-      return NextResponse.redirect(
-        new URL("/admin/login?error=auth_failed", appUrl),
+      console.error("[admin-token] getUser failed:", error?.message);
+      return NextResponse.json(
+        { error: "Invalid or expired token. Please try again." },
+        { status: 401 },
       );
     }
 
@@ -94,12 +93,13 @@ export async function GET(request: Request) {
       }
 
       if (!user?.staffProfile) {
-        return NextResponse.redirect(
-          new URL("/admin/login?error=setup_failed", appUrl),
+        return NextResponse.json(
+          { error: "Failed to set up admin account." },
+          { status: 500 },
         );
       }
 
-      const response = NextResponse.redirect(new URL(next, appUrl));
+      const response = NextResponse.json({ success: true });
       await setAdminSessionCookie(response, {
         id: user.id,
         email: user.email,
@@ -109,7 +109,7 @@ export async function GET(request: Request) {
       return response;
     }
 
-    // ── Other staff members: must exist with active Staff profile ──
+    // ── Other staff members ──
     const user = await prisma.user.findUnique({
       where: { email },
       include: { staffProfile: true },
@@ -121,13 +121,16 @@ export async function GET(request: Request) {
       !user.staffProfile ||
       !user.staffProfile.active
     ) {
-      console.warn(`[admin-callback] Rejected: ${email} — not registered staff.`);
-      return NextResponse.redirect(
-        new URL("/admin/login?error=not_authorized", appUrl),
+      return NextResponse.json(
+        {
+          error:
+            "Access denied. Your Google account is not registered as staff. Contact the admin.",
+        },
+        { status: 403 },
       );
     }
 
-    const response = NextResponse.redirect(new URL(next, appUrl));
+    const response = NextResponse.json({ success: true });
     await setAdminSessionCookie(response, {
       id: user.id,
       email: user.email,
@@ -136,9 +139,10 @@ export async function GET(request: Request) {
     });
     return response;
   } catch (err) {
-    console.error("[admin-callback] Unexpected error:", err);
-    return NextResponse.redirect(
-      new URL("/admin/login?error=auth_failed", appUrl),
+    console.error("[admin-token] Error:", err);
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 },
     );
   }
 }
