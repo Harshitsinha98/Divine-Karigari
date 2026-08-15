@@ -38,6 +38,106 @@ function ItemVisual({
   );
 }
 
+const GOLDEN_ANGLE = 137.508 * (Math.PI / 180);
+
+const PETAL_COLORS = [
+  "#E79AB8",
+  "#F3C359",
+  "#C86B85",
+  "#E8A0BF",
+  "#D4A853",
+  "#B8657C",
+];
+
+// Static baby's-breath filler dots for a fuller, real-bouquet look.
+const FILLER = [
+  { x: -70, y: -30 },
+  { x: 66, y: -26 },
+  { x: -40, y: -62 },
+  { x: 44, y: -58 },
+  { x: 0, y: -76 },
+  { x: -86, y: 4 },
+  { x: 84, y: 8 },
+  { x: -24, y: 26 },
+  { x: 30, y: 30 },
+  { x: 4, y: -6 },
+];
+
+// A single "flower" whose center is the product, ringed by petals.
+function Petals({ color }: { color: string }) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      className="absolute inset-0 h-full w-full"
+      aria-hidden
+    >
+      {Array.from({ length: 8 }).map((_, i) => (
+        <ellipse
+          key={i}
+          cx="50"
+          cy="26"
+          rx="12"
+          ry="24"
+          fill={color}
+          transform={`rotate(${i * 45} 50 50)`}
+          opacity="0.96"
+        />
+      ))}
+      <circle cx="50" cy="50" r="18" fill="rgba(255,255,255,0.3)" />
+    </svg>
+  );
+}
+
+function Bloom({
+  item,
+  qty,
+  color,
+  size,
+  rotate,
+}: {
+  item: CatalogProduct;
+  qty: number;
+  color: string;
+  size: number;
+  rotate: number;
+}) {
+  const img = item.images?.[0];
+  const inner = size * 0.52;
+  return (
+    <div
+      className="relative drop-shadow-[0_6px_10px_rgba(43,36,28,0.22)]"
+      style={{ width: size, height: size }}
+    >
+      <div
+        className="absolute inset-0"
+        style={{ transform: `rotate(${rotate}deg)` }}
+      >
+        <Petals color={color} />
+      </div>
+      <div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-2 border-white bg-white"
+        style={{ width: inner, height: inner }}
+      >
+        {img ? (
+          <Image src={img} alt={item.name} fill sizes="64px" className="object-cover" />
+        ) : (
+          <span
+            className="flex h-full w-full items-center justify-center leading-none"
+            style={{ fontSize: inner * 0.5 }}
+          >
+            {guessEmoji(item.name)}
+          </span>
+        )}
+      </div>
+      {qty > 1 && (
+        <span className="absolute -right-1 -top-1 z-10 rounded-full bg-oxblood px-1.5 py-0.5 text-[10px] font-semibold text-parchment shadow">
+          ×{qty}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function GiftBuilderStudio({
   bouquetItems,
   giftboxItems,
@@ -160,67 +260,107 @@ export function GiftBuilderStudio({
 
           {isBouquet ? (
             /* ── BOUQUET ── */
-            <div className="relative flex flex-col items-center">
-              <div className="relative flex h-52 items-end justify-center">
+            <div
+              className="relative flex flex-col items-center"
+              style={{ transformStyle: "preserve-3d" }}
+            >
+              {/* Bloom head — products arranged like a real bouquet */}
+              <div
+                className="relative h-56 w-72"
+                style={{ transform: "rotateX(8deg)" }}
+              >
+                {/* baby's-breath filler for fullness */}
+                {selected.length > 0 &&
+                  FILLER.map((f, i) => (
+                    <span
+                      key={`filler-${i}`}
+                      className="absolute h-1.5 w-1.5 rounded-full bg-white/85 shadow-sm"
+                      style={{
+                        left: `calc(50% + ${f.x}px)`,
+                        top: `calc(46% + ${f.y}px)`,
+                        transform: "translate(-50%, -50%)",
+                      }}
+                    />
+                  ))}
                 <AnimatePresence>
-                  {selected.map((item, idx) => {
-                    const n = selected.length;
-                    const spread = Math.min(78, n * 20);
-                    const angle =
-                      n > 1 ? -spread / 2 + (spread / (n - 1)) * idx : 0;
+                  {selected.map((item, i) => {
+                    const theta = i * GOLDEN_ANGLE;
+                    const radius = 30 * Math.sqrt(i);
+                    const x = Math.cos(theta) * radius;
+                    const y = Math.sin(theta) * radius * 0.82;
+                    const size = 78 - (i % 3) * 6;
+                    const color = PETAL_COLORS[i % PETAL_COLORS.length];
                     return (
                       <motion.div
                         key={item.id}
-                        initial={{ opacity: 0, y: 60, scale: 0.5 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 60, scale: 0.5 }}
-                        transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                        className="absolute bottom-0"
+                        initial={{ opacity: 0, scale: 0.3 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.3 }}
+                        transition={{ type: "spring", stiffness: 240, damping: 18 }}
+                        className="absolute"
                         style={{
-                          transform: `rotate(${angle}deg)`,
-                          transformOrigin: "bottom center",
+                          left: `calc(50% + ${x}px)`,
+                          top: `calc(46% + ${y}px)`,
+                          zIndex: 200 + Math.round(y),
+                          transform: "translate(-50%, -50%)",
                         }}
                       >
-                        <div
-                          className="relative -translate-y-6"
-                          style={{ transformStyle: "preserve-3d" }}
-                        >
-                          <div className="relative h-20 w-20 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-white to-cream shadow-lift">
-                            <ItemVisual item={item} sizes="80px" />
-                          </div>
-                          {picks[item.id] > 1 && (
-                            <span className="absolute -right-1 -top-1 rounded-full bg-oxblood px-1.5 py-0.5 text-[10px] font-semibold text-parchment shadow">
-                              ×{picks[item.id]}
-                            </span>
-                          )}
-                        </div>
+                        <Bloom
+                          item={item}
+                          qty={picks[item.id]}
+                          color={color}
+                          size={size}
+                          rotate={(i * 47) % 360}
+                        />
                       </motion.div>
                     );
                   })}
                 </AnimatePresence>
                 {!selected.length && (
-                  <div className="absolute bottom-6 flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-sand-line text-3xl text-muted-ink">
-                    🌸
+                  <div className="absolute left-1/2 top-1/2 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-sand-line text-4xl text-muted-ink">
+                    🌷
                   </div>
                 )}
               </div>
-              {/* wrap */}
-              <div className="relative -mt-2 h-28 w-40">
+
+              {/* Stems + leaves */}
+              <svg
+                width="120"
+                height="70"
+                viewBox="0 0 120 70"
+                className="-mt-3"
+                aria-hidden
+              >
+                {[52, 60, 68, 46, 74].map((sx, i) => (
+                  <path
+                    key={i}
+                    d={`M${sx} 0 C ${sx + (60 - sx) * 0.4} 30, 60 45, 60 70`}
+                    stroke="#274B3B"
+                    strokeWidth="3"
+                    fill="none"
+                    opacity={0.85}
+                  />
+                ))}
+                <path d="M54 24 q -16 -6 -22 5 q 16 5 22 -5Z" fill="#35644D" />
+                <path d="M66 32 q 16 -6 22 5 q -16 5 -22 -5Z" fill="#35644D" />
+              </svg>
+
+              {/* Kraft wrap + ribbon */}
+              <div className="relative -mt-1 h-24 w-36">
                 <div
-                  className="absolute inset-x-0 top-0 mx-auto h-28 w-40 bg-gradient-to-b from-oxblood via-oxblood/90 to-[#5c1a22] shadow-lift-lg"
-                  style={{
-                    clipPath: "polygon(18% 0, 82% 0, 100% 100%, 0 100%)",
-                  }}
+                  className="absolute inset-x-0 top-0 mx-auto h-24 w-36 bg-gradient-to-b from-[#d9c3a0] via-[#c9ad82] to-[#b2915f] shadow-lift-lg"
+                  style={{ clipPath: "polygon(16% 0, 84% 0, 100% 100%, 0 100%)" }}
                 />
                 <div
-                  className="absolute inset-x-0 top-0 mx-auto h-28 w-40 opacity-30"
+                  className="absolute inset-x-0 top-0 mx-auto h-24 w-36 opacity-25"
                   style={{
-                    clipPath: "polygon(18% 0, 82% 0, 100% 100%, 0 100%)",
+                    clipPath: "polygon(16% 0, 84% 0, 100% 100%, 0 100%)",
                     background:
-                      "repeating-linear-gradient(115deg, transparent 0 10px, rgba(255,255,255,.25) 10px 12px)",
+                      "repeating-linear-gradient(120deg, transparent 0 9px, rgba(255,255,255,.35) 9px 11px)",
                   }}
                 />
-                <span className="absolute left-1/2 top-2 -translate-x-1/2 text-lg">
+                <div className="absolute left-1/2 top-1.5 h-3.5 w-24 -translate-x-1/2 rounded-full bg-gradient-to-r from-gold to-gold-light shadow" />
+                <span className="absolute left-1/2 top-0 -translate-x-1/2 text-xl">
                   🎀
                 </span>
               </div>
