@@ -62,7 +62,7 @@ export function Footer() {
           </h2>
           <div className="mt-5 grid gap-3 text-sm text-parchment/65">
             <Link href="/track" className="transition-colors hover:text-gold">Track order</Link>
-            <Link href="/shipping" className="transition-colors hover:text-gold">Shipping & returns</Link>
+            <Link href="/shipping" className="transition-colors hover:text-gold">Shipping policy</Link>
             <Link href="/faq" className="transition-colors hover:text-gold">FAQs</Link>
             <Link href="/privacy" className="transition-colors hover:text-gold">Privacy</Link>
             <a

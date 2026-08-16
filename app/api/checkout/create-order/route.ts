@@ -175,7 +175,7 @@ export async function POST(request: Request) {
             )
           : Math.min(Number(coupon.value), subtotal);
     const taxable = Math.max(0, subtotal - discount);
-    const shippingFee = taxable >= 999 ? 0 : 99;
+    const shippingFee = taxable >= 499 ? 0 : 99;
     const tax = Math.round(taxable * 0.05 * 100) / 100;
     const total = Math.round((taxable + shippingFee + tax) * 100) / 100;
     const orderNumber = `DK-${Date.now().toString(36).toUpperCase()}`;

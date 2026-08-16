@@ -208,15 +208,15 @@ export function Header() {
     <header className="sticky top-0 z-50 bg-white shadow-soft">
       {/* ── Utility bar ── */}
       <div className="border-b border-sand-line">
-        <div className="container flex h-16 items-center gap-3 sm:gap-5">
+        <div className="container flex h-14 items-center gap-3 sm:h-16 sm:gap-5">
           {/* Logo */}
-          <Link href="/" className="flex shrink-0 items-center gap-2.5">
+          <Link href="/" className="flex shrink-0 items-center gap-2">
             <Image
               src="/logo.svg"
               alt="Divine Karigari"
               width={44}
               height={44}
-              className="h-9 w-9 sm:h-10 sm:w-10"
+              className="h-8 w-8 sm:h-10 sm:w-10"
               priority
             />
             <span className="hidden font-display text-lg leading-none tracking-tight text-ink sm:block">
@@ -233,7 +233,7 @@ export function Header() {
           </div>
 
           {/* Actions */}
-          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          <div className="ml-auto flex items-center gap-0.5 sm:gap-2">
             <Link
               href="/track"
               className="hidden flex-col items-center px-2 text-[11px] text-muted-ink transition hover:text-tulsi sm:flex"
@@ -243,10 +243,12 @@ export function Header() {
             </Link>
             <Link
               href="/account"
-              className="hidden flex-col items-center px-2 text-[11px] text-muted-ink transition hover:text-tulsi sm:flex"
+              className="flex flex-col items-center px-2 text-[11px] text-muted-ink transition hover:text-tulsi"
             >
-              <UserRound size={19} />
-              {user ? (user.name?.split(" ")[0] ?? "Account") : "Sign in"}
+              <UserRound size={18} />
+              <span className="hidden sm:inline">
+                {user ? (user.name?.split(" ")[0] ?? "Account") : "Sign in"}
+              </span>
             </Link>
             <Link
               href="/wishlist"
@@ -260,7 +262,7 @@ export function Header() {
               onClick={() => setCartOpen(true)}
               className="relative flex flex-col items-center px-2 text-[11px] text-muted-ink transition hover:text-tulsi"
             >
-              <ShoppingBag size={19} />
+              <ShoppingBag size={18} />
               Cart
               {cartCount > 0 && (
                 <span className="absolute -right-0.5 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-medium text-white">
@@ -271,7 +273,7 @@ export function Header() {
             <button
               aria-label={open ? "Close menu" : "Open menu"}
               onClick={() => setOpen(!open)}
-              className="rounded-full p-2 text-ink md:hidden"
+              className="rounded-full p-1.5 text-ink md:hidden"
             >
               {open ? <X size={22} /> : <Menu size={22} />}
             </button>
@@ -279,7 +281,7 @@ export function Header() {
         </div>
 
         {/* Mobile search */}
-        <div className="container pb-3 md:hidden">
+        <div className="container pb-2.5 md:hidden">
           <HeaderSearch />
         </div>
       </div>
@@ -377,11 +379,37 @@ export function Header() {
             : "pointer-events-none -translate-y-2 opacity-0"
         }`}
       >
-        <nav className="container grid gap-1 py-4">
+        <nav className="container grid gap-0 py-3">
+          {/* Quick actions at top */}
+          <div className="flex gap-2 border-b border-sand-line pb-3 mb-2">
+            <Link
+              href="/account"
+              onClick={() => setOpen(false)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-soft border border-sand-line py-2.5 text-xs font-medium hover:border-tulsi hover:text-tulsi"
+            >
+              <UserRound size={15} />
+              {user ? (user.name?.split(" ")[0] ?? "Account") : "Sign in"}
+            </Link>
+            <Link
+              href="/wishlist"
+              onClick={() => setOpen(false)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-soft border border-sand-line py-2.5 text-xs font-medium hover:border-tulsi hover:text-tulsi"
+            >
+              <Heart size={15} /> Wishlist
+            </Link>
+            <Link
+              href="/track"
+              onClick={() => setOpen(false)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-soft border border-sand-line py-2.5 text-xs font-medium hover:border-tulsi hover:text-tulsi"
+            >
+              <PackageSearch size={15} /> Track
+            </Link>
+          </div>
+
           <Link
             href="/shop"
             onClick={() => setOpen(false)}
-            className="rounded-soft-lg px-4 py-3 font-display text-lg hover:bg-cream"
+            className="rounded-soft px-4 py-2.5 text-base font-medium hover:bg-cream"
           >
             All Gifts
           </Link>
@@ -390,7 +418,7 @@ export function Header() {
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="rounded-soft-lg px-4 py-3 font-display text-lg hover:bg-cream"
+              className="rounded-soft px-4 py-2.5 text-base font-medium hover:bg-cream"
             >
               {label}
             </Link>
@@ -398,22 +426,22 @@ export function Header() {
           <Link
             href="/#gift-builder"
             onClick={() => setOpen(false)}
-            className="rounded-soft-lg px-4 py-3 font-display text-lg text-oxblood hover:bg-cream"
+            className="rounded-soft px-4 py-2.5 text-base font-medium text-oxblood hover:bg-cream"
           >
             Custom Bouquet
           </Link>
 
-          <div className="mt-2 border-t border-sand-line pt-3">
-            <p className="px-4 pb-2 text-xs font-semibold uppercase tracking-[0.16em] text-gold">
+          <div className="mt-2 border-t border-sand-line pt-2">
+            <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold">
               Shop by occasion
             </p>
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-2 gap-0.5">
               {occasionMenu.map(([label, href]) => (
                 <Link
                   key={label}
                   href={href}
                   onClick={() => setOpen(false)}
-                  className="rounded-soft px-4 py-2.5 text-sm text-muted-ink hover:bg-cream hover:text-tulsi"
+                  className="rounded-soft px-4 py-2 text-sm text-muted-ink hover:bg-cream hover:text-tulsi"
                 >
                   {label}
                 </Link>
@@ -421,31 +449,8 @@ export function Header() {
             </div>
           </div>
 
-          <div className="mt-3 border-t border-sand-line pt-4">
-            <LocationPill className="mb-3 w-full" />
-            <div className="grid grid-cols-3 gap-2">
-              <Link
-                href="/track"
-                onClick={() => setOpen(false)}
-                className="flex flex-col items-center justify-center gap-1 rounded-soft border border-sand-line py-3 text-xs hover:border-tulsi hover:text-tulsi"
-              >
-                <PackageSearch size={16} /> Track
-              </Link>
-              <Link
-                href="/wishlist"
-                onClick={() => setOpen(false)}
-                className="flex flex-col items-center justify-center gap-1 rounded-soft border border-sand-line py-3 text-xs hover:border-tulsi hover:text-tulsi"
-              >
-                <Heart size={16} /> Wishlist
-              </Link>
-              <Link
-                href="/account"
-                onClick={() => setOpen(false)}
-                className="flex flex-col items-center justify-center gap-1 rounded-soft border border-sand-line py-3 text-xs hover:border-tulsi hover:text-tulsi"
-              >
-                <UserRound size={16} /> Sign in
-              </Link>
-            </div>
+          <div className="mt-2 border-t border-sand-line pt-2">
+            <LocationPill className="mx-4 w-auto" />
           </div>
         </nav>
       </div>

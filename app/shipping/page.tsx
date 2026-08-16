@@ -3,7 +3,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata(
   "Shipping Policy",
-  "Delivery coverage, timelines, shipping charges, and tracking for Divine Karigari orders across India.",
+  "Delivery coverage, timelines, and tracking for Divine Karigari orders across India.",
   "/shipping",
 );
 export default function ShippingPage() {
@@ -23,13 +23,14 @@ export default function ShippingPage() {
       </p>
       <h2>Shipping charges</h2>
       <p>
-        Shipping is free on orders over ₹999. A delivery charge may apply below
-        that threshold and will be shown before payment.
+        Shipping is <strong>free</strong> on all orders above ₹499. For orders
+        below ₹499, a nominal delivery charge based on your pincode and package
+        weight will be shown at checkout before payment.
       </p>
       <h2>Tracking</h2>
       <p>
-        Once your order ships, we’ll share tracking details by email or message.
-        Please ensure someone is available to receive the parcel.
+        Once your order ships, we&apos;ll share tracking details by email. You
+        can also track anytime from your account or the Track Order page.
       </p>
     </PolicyPage>
   );

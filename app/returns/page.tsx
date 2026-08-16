@@ -2,39 +2,30 @@ import { PolicyPage } from "@/components/pages/PolicyPage";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata(
-  "Return & Refund Policy",
-  "Eligibility, timelines, and refund information for Divine Karigari orders.",
+  "Exchange & Support Policy",
+  "How we handle damaged or incorrect orders at Divine Karigari.",
   "/returns",
 );
 export default function ReturnsPage() {
   return (
-    <PolicyPage
-      eyebrow="If something isn’t right"
-      title="Return & Refund Policy"
-    >
-      <h2>Eligible returns</h2>
+    <PolicyPage eyebrow="We're here to help" title="Exchange & Support Policy">
+      <h2>No returns</h2>
       <p>
-        Unused, non-personalized items may be eligible for a return request
-        within 7 days of delivery. Items must be in their original condition and
-        packaging.
+        Due to the handcrafted and personalized nature of our products, we do
+        not accept returns or offer refunds for change of mind. Each piece is
+        made to order with care and craftsmanship.
       </p>
       <h2>Damaged or incorrect orders</h2>
       <p>
-        Please contact us within 48 hours of delivery with photographs of the
-        parcel and item. We’ll review the issue and arrange a replacement,
-        refund, or other suitable resolution.
+        If your order arrives damaged, defective, or incorrect, please contact
+        us on WhatsApp within 48 hours of delivery with photographs of the
+        parcel and item. We&apos;ll review and arrange an exchange or suitable
+        resolution on a case-by-case basis.
       </p>
-      <h2>Personalized items</h2>
+      <h2>Need help?</h2>
       <p>
-        Customized products are made specifically for you and cannot usually be
-        returned for a change of mind. This does not affect your rights if an
-        item arrives damaged, defective, or incorrectly made.
-      </p>
-      <h2>Refunds</h2>
-      <p>
-        Approved refunds are sent to the original payment method. Processing
-        time can vary by bank or payment provider. Final eligibility and process
-        will be confirmed in our launch-ready policy.
+        For any concerns about your order, reach out to us directly on WhatsApp
+        and we&apos;ll be happy to assist you promptly.
       </p>
     </PolicyPage>
   );
