@@ -259,13 +259,16 @@ function BuilderDeliveryCheck() {
     if (!/^\d{6}$/.test(pin)) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/shipping/serviceability", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pincode: pin, items: [] }),
-      });
-      if (res.ok) setResult(await res.json());
-      else setResult({ available: false });
+      const res = await fetch(`/api/shipping/pincheck?pincode=${pin}`);
+      if (res.ok) {
+        const json = await res.json();
+        setResult({
+          available: json.data?.available !== false,
+          estimatedDays: json.data?.estimatedDays ?? null,
+        });
+      } else {
+        setResult({ available: false });
+      }
     } catch {
       setResult({ available: false });
     } finally {
