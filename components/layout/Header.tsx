@@ -227,7 +227,7 @@ export function Header() {
               className="h-8 w-8 sm:h-10 sm:w-10"
               priority
             />
-            <span className="hidden font-display text-lg leading-none tracking-tight text-ink sm:block">
+            <span className="font-display text-base font-medium leading-none tracking-tight text-ink sm:text-lg">
               Divine <span className="text-gradient-gold">Karigari</span>
             </span>
           </Link>
@@ -251,10 +251,10 @@ export function Header() {
             </Link>
             <Link
               href="/account"
-              className="flex flex-col items-center px-2 text-[11px] text-muted-ink transition hover:text-tulsi"
+              className="hidden flex-col items-center px-2 text-[11px] text-muted-ink transition hover:text-tulsi sm:flex"
             >
               <UserRound size={18} />
-              <span className="hidden max-w-[80px] truncate sm:inline">
+              <span className="max-w-[80px] truncate">
                 {user ? `Hi, ${firstName}` : "Sign in"}
               </span>
             </Link>
