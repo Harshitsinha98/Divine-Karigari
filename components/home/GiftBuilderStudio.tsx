@@ -238,8 +238,70 @@ export function GiftBuilderStudio({
               {demo ? "Preview only" : "Add to cart"}
             </button>
           </div>
+
+          {/* Pincode delivery check */}
+          <BuilderDeliveryCheck />
         </div>
       </div>
+    </div>
+  );
+}
+
+function BuilderDeliveryCheck() {
+  const [pin, setPin] = useState("");
+  const [result, setResult] = useState<{
+    available: boolean;
+    estimatedDays?: number | null;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const check = async () => {
+    if (!/^\d{6}$/.test(pin)) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/shipping/serviceability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pincode: pin, items: [] }),
+      });
+      if (res.ok) setResult(await res.json());
+      else setResult({ available: false });
+    } catch {
+      setResult({ available: false });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 border-t border-sand-line/70 pt-4">
+      <p className="text-xs font-medium text-muted-ink">Check delivery</p>
+      <div className="mt-2 flex gap-2">
+        <input
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          inputMode="numeric"
+          maxLength={6}
+          placeholder="Enter pincode"
+          className="h-9 flex-1 rounded-soft border border-sand-line px-3 text-sm outline-none focus:border-tulsi"
+        />
+        <button
+          onClick={check}
+          disabled={pin.length !== 6 || loading}
+          className="h-9 rounded-soft bg-tulsi px-3 text-xs font-medium text-white disabled:opacity-50"
+        >
+          {loading ? "…" : "Check"}
+        </button>
+      </div>
+      {result && (
+        <p
+          className={`mt-2 text-xs ${result.available ? "text-tulsi" : "text-oxblood"}`}
+        >
+          {result.available
+            ? `Delivery available${result.estimatedDays ? ` · estimated ${result.estimatedDays} days` : ""}`
+            : "Delivery not available to this pincode"}
+        </p>
+      )}
     </div>
   );
 }

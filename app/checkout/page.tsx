@@ -607,9 +607,6 @@ export default function CheckoutPage() {
                 {serviceability?.available && (
                   <p className="mt-4 rounded-soft border border-tulsi/20 bg-tulsi/5 p-3 text-sm text-tulsi">
                     Delivery available
-                    {serviceability.courierName
-                      ? ` via ${serviceability.courierName}`
-                      : ""}
                     {serviceability.estimatedDays
                       ? ` · estimated in ${serviceability.estimatedDays} working days`
                       : ""}
