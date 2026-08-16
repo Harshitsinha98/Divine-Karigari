@@ -296,7 +296,9 @@ async function assignShiprocketAwbAndPrepareShipment(
         awbTrackingNumber: String(awb),
         courierName:
           assignment.courier_name ?? assignment.courier_company_name ?? null,
-        status: "SHIPPED",
+        // AWB assigned = order is packed & ready for pickup, NOT shipped yet.
+        // The Shiprocket webhook moves it to SHIPPED on actual courier pickup.
+        status: "PROCESSING",
         shiprocketSyncError: null,
       },
     });
@@ -304,9 +306,9 @@ async function assignShiprocketAwbAndPrepareShipment(
     await tx.trackingEvent.create({
       data: {
         orderId,
-        status: "SHIPPED",
-        title: "Shipment ready",
-        description: `AWB ${awb} assigned via ${assignment.courier_name ?? assignment.courier_company_name ?? "courier"}.`,
+        status: "PROCESSING",
+        title: "Packed & ready to ship",
+        description: `AWB ${awb} assigned via ${assignment.courier_name ?? assignment.courier_company_name ?? "courier"}. Awaiting courier pickup.`,
       },
     });
     return true;

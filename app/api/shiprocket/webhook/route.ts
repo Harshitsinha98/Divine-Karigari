@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
+import type { OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendOrderLifecycleNotification } from "@/lib/order-notification";
 
@@ -16,6 +17,29 @@ const statusFor = (raw: string) => {
   if (status.includes("confirm")) return "CONFIRMED" as const;
   return "PROCESSING" as const;
 };
+
+// Linear progression rank. Exceptions (cancel/rto/returned) can apply anytime;
+// otherwise the status may only move forward, never backward.
+const STATUS_RANK: Record<string, number> = {
+  PENDING: 0,
+  CONFIRMED: 1,
+  PROCESSING: 2,
+  SHIPPED: 3,
+  OUT_FOR_DELIVERY: 4,
+  DELIVERED: 5,
+};
+const STATUS_EXCEPTIONS = new Set(["CANCELLED", "RTO", "RETURNED"]);
+
+function resolveStatus(
+  current: OrderStatus,
+  incoming: OrderStatus,
+): OrderStatus {
+  if (STATUS_EXCEPTIONS.has(incoming)) return incoming;
+  const currentRank = STATUS_RANK[current] ?? 0;
+  const incomingRank = STATUS_RANK[incoming] ?? 0;
+  // Never regress from a terminal/further state.
+  return incomingRank >= currentRank ? incoming : current;
+}
 const titleFor = (status: string) =>
   status
     .toLowerCase()
@@ -56,7 +80,7 @@ export async function POST(request: Request) {
         payload.current_status_name ??
         "Processing",
     );
-    const status = statusFor(rawStatus);
+    const incomingStatus = statusFor(rawStatus);
     const order = await prisma.order.findFirst({
       where: {
         OR: [
@@ -69,6 +93,12 @@ export async function POST(request: Request) {
       include: { user: true },
     });
     if (!order) return NextResponse.json({ received: true });
+
+    // Guard against backward status transitions (e.g. a late "Processing"
+    // event arriving after "Out for delivery").
+    const status = resolveStatus(order.status, incomingStatus);
+    const statusChanged = status !== order.status;
+
     const awb = payload.awb_code ?? payload.awb ?? order.awbTrackingNumber;
     const courier =
       payload.courier_name ?? payload.courier_company_name ?? order.courierName;
@@ -99,10 +129,11 @@ export async function POST(request: Request) {
         },
       });
       if (!updated.count) return false;
+      // Always log the raw event to the timeline for full tracking history.
       await tx.trackingEvent.create({
         data: {
           orderId: order.id,
-          status,
+          status: incomingStatus,
           title: titleFor(rawStatus),
           description: payload.status_description ?? payload.activity ?? null,
           location: payload.current_location ?? payload.location ?? null,
@@ -117,20 +148,24 @@ export async function POST(request: Request) {
       include: { user: true },
     });
     if (!updated) return NextResponse.json({ received: true });
-    const preferences = updated.user.notificationPreferences as {
-      orderUpdates?: boolean;
-      mobileUpdates?: boolean;
-    };
-    await sendOrderLifecycleNotification({
-      email: preferences.orderUpdates === false ? null : updated.user.email,
-      name: updated.user.name,
-      phone: preferences.mobileUpdates === true ? updated.user.phone : null,
-      orderId: updated.id,
-      orderNumber: updated.orderNumber,
-      status,
-      awb: updated.awbTrackingNumber,
-      courier: updated.courierName,
-    });
+    // Only notify the customer when the order status actually progressed —
+    // avoids spamming duplicate/regressed status emails.
+    if (statusChanged) {
+      const preferences = updated.user.notificationPreferences as {
+        orderUpdates?: boolean;
+        mobileUpdates?: boolean;
+      };
+      await sendOrderLifecycleNotification({
+        email: preferences.orderUpdates === false ? null : updated.user.email,
+        name: updated.user.name,
+        phone: preferences.mobileUpdates === true ? updated.user.phone : null,
+        orderId: updated.id,
+        orderNumber: updated.orderNumber,
+        status,
+        awb: updated.awbTrackingNumber,
+        courier: updated.courierName,
+      });
+    }
 
     // ── Handle return shipment tracking ──────────────────────────
     // If this order has a return request, update its tracking too.
