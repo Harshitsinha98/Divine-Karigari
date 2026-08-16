@@ -98,24 +98,24 @@ export function PromoCarousel() {
             sizes="100vw"
             className="object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-ink/85 via-ink/45 to-transparent" />
-          <div className="relative flex h-full flex-col justify-center gap-3 p-6 sm:gap-4 sm:p-14 lg:p-20">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-gold backdrop-blur-sm">
-              <span className="h-1 w-1 rounded-full bg-gold" />
+          <div className="absolute inset-0 bg-gradient-to-r from-ink/90 via-ink/70 to-ink/30 sm:via-ink/45 sm:to-transparent" />
+          <div className="relative flex h-full flex-col justify-center gap-2.5 p-5 sm:gap-4 sm:p-14 lg:p-20">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-gold/40 bg-gold/20 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-gold-light backdrop-blur-sm sm:text-xs sm:tracking-[0.2em]">
+              <span className="h-1 w-1 rounded-full bg-gold-light" />
               {slide.eyebrow}
             </span>
-            <h2 className="max-w-xl font-display text-3xl leading-[1.08] text-parchment sm:text-5xl lg:text-6xl">
+            <h2 className="max-w-[90%] font-display text-2xl leading-[1.1] text-white sm:max-w-xl sm:text-5xl lg:text-6xl">
               {slide.title}{" "}
               {slide.highlight && (
                 <span className="text-gold-light">{slide.highlight}</span>
               )}
             </h2>
-            <p className="max-w-md text-sm text-parchment/80 sm:text-base">
+            <p className="max-w-[85%] text-xs text-white/85 sm:max-w-md sm:text-base">
               {slide.subtitle}
             </p>
             <Link
               href={slide.href}
-              className="mt-2 inline-flex w-fit items-center gap-2 rounded-full bg-gold px-6 py-3 text-sm font-medium text-ink transition duration-300 hover:bg-gold-light hover:shadow-glow"
+              className="mt-1 inline-flex w-fit items-center gap-2 rounded-full bg-gold px-5 py-2.5 text-xs font-medium text-white transition duration-300 hover:bg-gold-light hover:shadow-glow sm:mt-2 sm:px-6 sm:py-3 sm:text-sm"
             >
               {slide.ctaLabel}
               <span>&rarr;</span>

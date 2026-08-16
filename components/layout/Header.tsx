@@ -192,17 +192,25 @@ function HeaderSearch() {
 
 export function Header() {
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<{ name?: string | null } | null>(null);
+  const [user, setUser] = useState<{
+    name?: string | null;
+    email?: string | null;
+  } | null>(null);
   const { cartCount, setCartOpen } = useCommerce();
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    fetch("/api/account/profile")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.data) setUser(data.data);
       })
       .catch(() => {});
   }, []);
+
+  const firstName =
+    user?.name?.trim().split(" ")[0] ||
+    user?.email?.split("@")[0] ||
+    "there";
 
   return (
     <header className="sticky top-0 z-50 bg-white shadow-soft">
@@ -246,8 +254,8 @@ export function Header() {
               className="flex flex-col items-center px-2 text-[11px] text-muted-ink transition hover:text-tulsi"
             >
               <UserRound size={18} />
-              <span className="hidden sm:inline">
-                {user ? (user.name?.split(" ")[0] ?? "Account") : "Sign in"}
+              <span className="hidden max-w-[80px] truncate sm:inline">
+                {user ? `Hi, ${firstName}` : "Sign in"}
               </span>
             </Link>
             <Link
@@ -388,7 +396,7 @@ export function Header() {
               className="flex flex-1 items-center justify-center gap-1.5 rounded-soft border border-sand-line py-2.5 text-xs font-medium hover:border-tulsi hover:text-tulsi"
             >
               <UserRound size={15} />
-              {user ? (user.name?.split(" ")[0] ?? "Account") : "Sign in"}
+              {user ? `Hi, ${firstName}` : "Sign in"}
             </Link>
             <Link
               href="/wishlist"
