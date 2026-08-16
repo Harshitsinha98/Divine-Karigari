@@ -192,7 +192,17 @@ function HeaderSearch() {
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<{ name?: string | null } | null>(null);
   const { cartCount, setCartOpen } = useCommerce();
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.data) setUser(data.data);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-white shadow-soft">
@@ -236,7 +246,7 @@ export function Header() {
               className="hidden flex-col items-center px-2 text-[11px] text-muted-ink transition hover:text-tulsi sm:flex"
             >
               <UserRound size={19} />
-              Sign in
+              {user ? (user.name?.split(" ")[0] ?? "Account") : "Sign in"}
             </Link>
             <Link
               href="/wishlist"
