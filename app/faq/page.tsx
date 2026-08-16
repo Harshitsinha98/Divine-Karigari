@@ -41,14 +41,14 @@ export default function FAQPage() {
                 "Absolutely. Add their address at checkout and include a gift note where available. Pricing is not included in the parcel.",
             },
             {
-              title: "What if my order arrives damaged?",
+              title: "What are the shipping charges?",
               content:
-                "Please contact us within 48 hours with photographs of the outer packaging and the product. We’ll help make it right.",
+                "Shipping is free on all orders above ₹499. For orders below ₹499, a small delivery charge based on your pincode and package weight is shown at checkout.",
             },
             {
-              title: "Can I return a customized item?",
+              title: "What if my order arrives damaged?",
               content:
-                "Customized items are made specifically for you and are generally not eligible for return unless they arrive damaged or incorrect.",
+                "Please contact us on WhatsApp within 48 hours with photographs of the outer packaging and the product. We’ll help make it right with an exchange or suitable resolution.",
             },
           ]}
         />

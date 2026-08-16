@@ -223,11 +223,9 @@ export function ProductPurchase({ product }: { product: ProductDetailData }) {
           items={[
             { title: "Description", content: product.description },
             {
-              title: "Shipping & Returns",
+              title: "Shipping",
               content:
-                product.returnWindowDays !== undefined && product.returnWindowDays !== null
-                  ? `Free shipping on orders over ₹999. Easy returns within ${product.returnWindowDays} days of delivery. Personalized items are made to order and may have different return policies.`
-                  : "Free shipping on orders over ₹999. Easy returns within 7 days of delivery. Personalized items are made to order and are generally not eligible for return unless they arrive damaged or incorrect.",
+                "Free shipping on all orders above ₹499. For orders below ₹499, a nominal delivery charge based on your pincode and package weight is shown at checkout. Each piece is handcrafted and made to order.",
             },
             {
               title: "Care Instructions",

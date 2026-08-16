@@ -135,26 +135,8 @@ export function DeliveryEstimate({
 
               <div className="flex items-center gap-2 text-muted-ink">
                 <Truck size={15} className="text-gold" />
-                <span>
-                  {result.rate && result.rate > 0 ? (
-                    <>
-                      Shipping{" "}
-                      <span className="font-medium text-ink">
-                        &#8377;{result.rate.toLocaleString("en-IN")}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="font-medium text-tulsi">
-                      Free shipping
-                    </span>
-                  )}
-                  {result.courierName && (
-                    <>
-                      {" "}
-                      &middot; via{" "}
-                      <span className="text-ink">{result.courierName}</span>
-                    </>
-                  )}
+                <span className="font-medium text-tulsi">
+                  Free shipping on orders above &#8377;499
                 </span>
               </div>
             </>
