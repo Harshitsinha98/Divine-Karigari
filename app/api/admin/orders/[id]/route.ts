@@ -3,6 +3,7 @@ import { z } from "zod";
 import { adminError, requireAdmin } from "@/lib/admin-api";
 import { prisma } from "@/lib/prisma";
 import { sanitizeText } from "@/lib/sanitize";
+import { sendOrderLifecycleNotification } from "@/lib/order-notification";
 
 const optionalClean = (maximum: number) =>
   z
@@ -40,7 +41,7 @@ const title: Record<string, string> = {
   RTO: "Returned to origin",
 };
 const include = {
-  user: { select: { id: true, name: true, email: true, phone: true } },
+  user: { select: { id: true, name: true, email: true, phone: true, notificationPreferences: true } },
   items: { include: { product: { select: { images: true } }, variant: true } },
   payments: true,
   refunds: {
@@ -105,6 +106,24 @@ export async function PUT(request: Request, { params }: Context) {
         { error: "Cancelled or cancelling orders cannot be updated." },
         { status: 409 },
       );
+
+    // Send lifecycle notification to customer on status change
+    if (order.user) {
+      const prefs = (order.user as { notificationPreferences?: { orderUpdates?: boolean; mobileUpdates?: boolean } }).notificationPreferences ?? {};
+      sendOrderLifecycleNotification({
+        email: prefs.orderUpdates === false ? null : order.user.email,
+        name: order.user.name,
+        phone: prefs.mobileUpdates === true ? order.user.phone : null,
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        status: input.status,
+        awb: order.awbTrackingNumber,
+        courier: order.courierName,
+      }).catch((err) =>
+        console.error("[admin-order-update] Notification failed:", err),
+      );
+    }
+
     return NextResponse.json({ data: order });
   } catch (caught) {
     return adminError(caught);

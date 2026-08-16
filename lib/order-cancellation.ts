@@ -1,6 +1,7 @@
 import { OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cancelShiprocketOrder } from "@/lib/shiprocket";
+import { sendOrderLifecycleNotification } from "@/lib/order-notification";
 
 const cancellationInProgress = "Shiprocket cancellation in progress";
 const cancellableStatuses: OrderStatus[] = [
@@ -132,8 +133,31 @@ export async function cancelOrder(orderId: string, cancelledBy: CancelledBy) {
         description: `Cancelled by ${source} before courier pickup.`,
       },
     });
-    return tx.order.findUnique({ where: { id: order.id } });
+    return tx.order.findUnique({
+      where: { id: order.id },
+      include: { user: true },
+    });
   });
+
+  // Send cancellation notification to customer
+  if (result?.user) {
+    const prefs = result.user.notificationPreferences as {
+      orderUpdates?: boolean;
+      mobileUpdates?: boolean;
+    };
+    await sendOrderLifecycleNotification({
+      email: prefs.orderUpdates === false ? null : result.user.email,
+      name: result.user.name,
+      phone: prefs.mobileUpdates === true ? result.user.phone : null,
+      orderId: result.id,
+      orderNumber: result.orderNumber,
+      status: "CANCELLED",
+      awb: result.awbTrackingNumber,
+      courier: result.courierName,
+    }).catch((err) =>
+      console.error("[cancel-order] Notification failed:", err),
+    );
+  }
 
   return result;
 }
