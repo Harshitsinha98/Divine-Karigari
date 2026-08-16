@@ -12,7 +12,12 @@ type Confirmation = {
 export async function sendOrderConfirmationEmail(order: Confirmation) {
   try {
     const trackingUrl = absoluteUrl("/account/orders");
+    const adminUrl = absoluteUrl("/admin/orders");
+    const ownerEmail =
+      process.env.OWNER_NOTIFICATION_EMAIL ?? "divinekarigari@gmail.com";
+
     const results = await Promise.allSettled([
+      // Customer confirmation
       sendTransactionalEmail({
         to: order.email,
         subject: `Order ${order.orderNumber} is confirmed`,
@@ -26,6 +31,18 @@ export async function sendOrderConfirmationEmail(order: Confirmation) {
         action: {
           label: "View your order",
           url: trackingUrl,
+        },
+      }),
+      // Owner notification
+      sendTransactionalEmail({
+        to: ownerEmail,
+        subject: `🎉 New order! ${order.orderNumber} — ₹${order.total.toLocaleString("en-IN")}`,
+        preheader: `New order from ${order.name ?? order.email}`,
+        heading: "New order received!",
+        body: `<p style="margin:0 0 14px"><strong>${escapeHtml(order.orderNumber)}</strong> placed by <strong>${escapeHtml(order.name ?? order.email)}</strong></p><p style="margin:0 0 14px">Amount: <strong>₹${order.total.toLocaleString("en-IN")}</strong></p><p style="margin:0">Customer: ${escapeHtml(order.email)}${order.phone ? ` · ${escapeHtml(order.phone)}` : ""}</p>`,
+        action: {
+          label: "View in admin panel",
+          url: adminUrl,
         },
       }),
       sendOrderMobileNotification({
